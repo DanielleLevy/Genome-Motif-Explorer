@@ -4,10 +4,12 @@ import tensorflow
 from keras.layers import Input, Conv1D, Dense, Activation, GlobalMaxPooling1D
 from keras.models import Model
 from keras.regularizers import l2
-from itertools import permutations
+import pandas as pd
 import re
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import pearsonr, spearmanr
+
 # Define the model hyperparameters
 n_filters = 256
 kernel_size = 12
@@ -48,7 +50,7 @@ def model(shape, window, st, nt):
 
     return mdl
 def one_hot_encoding(sequence):
-    mapping = {'A': [1, 0, 0, 0], 'C': [0, 1, 0, 0], 'G': [0, 0, 1, 0], 'T': [0, 0, 0, 1]}
+    mapping = {'A': [1, 0, 0, 0], 'C': [0, 1, 0, 0], 'G': [0, 0, 1, 0], 'T': [0, 0, 0, 1],  'N': [0, 0, 0, 0]}
     encoded_sequence = [mapping.get(base, [0, 0, 0, 0]) for base in sequence]
     return np.array(encoded_sequence)
 def calculate_reverse_complement(sequence):
@@ -56,77 +58,31 @@ def calculate_reverse_complement(sequence):
     reversed_sequence = sequence[::-1]  # Reverse the sequence
     reverse_complement = [complement_dict[base] for base in reversed_sequence]
     return ''.join(reverse_complement)
-# with chromosom1 test
 
-def createDict():
+def createTestDict(positive_file_test):
+    test_dict = {}
+    # Read the CSV file into a DataFrame using pandas
+    data = pd.read_csv(positive_file_test)
+
+    # Iterate through the rows of the DataFrame
+    for index, row in data.iterrows():
+        sequence = row['ProbeSeq']
+        signal = row['iMab100nM_6.5_5']
+        test_dict[sequence] = signal
+
+
+    return test_dict
+def createDict(positive_file_train):
     # Define a regular expression pattern to match sequences with 124 bases centered at position 124
     pattern = r'>(chr\d+:\d+-\d+)\n([ACGTacgt]+)'
 
     # Create a dictionary to store both positive and negative sequences with classifications
     train_dict = {}
-    test_dict = {}
-
-    with open(positive_file, 'r') as file:
-        data = file.read()
-
-    # Use re.findall to extract all positive sequences
-    matches = re.findall(pattern, data)
-    stop_index = int(len(matches) * 1)
-
-    for match in matches[:stop_index]:
-        chromosome, sequence = match
-        sequence = sequence.upper()
-        midpoint = len(sequence) // 2
-        # Extract 62 bases to the right and 62 bases to the left from the midpoint
-        extracted_sequence = sequence[midpoint - 62:midpoint + 62]
-        if (len(extracted_sequence) == 124):
-            complement = calculate_reverse_complement(extracted_sequence)
-            g_count_sequence = extracted_sequence.count('G')
-            g_count_complement = complement.count('G')
-
-            if g_count_sequence >= g_count_complement:
-                if  re.search(r'\bchr1\b', chromosome):
-                    test_dict[extracted_sequence] = 1
-                else:
-                    train_dict[extracted_sequence] = 1
-            else:
-                if  re.search(r'\bchr1\b', chromosome):
-                    test_dict[complement] = 1
-                else:
-                    train_dict[complement] = 1
-    return test_dict, train_dict
-# with WDLPS test
-
-def createDictWDLPS():
-    # Define a regular expression pattern to match sequences with 124 bases centered at position 124
-    pattern = r'>(chr\d+:\d+-\d+)\n([ACGTacgt]+)'
-
-    # Create a dictionary to store both positive and negative sequences with classifications
-    train_dict = {}
-    test_dict = {}
-
-    with open(positive_file_test, 'r') as file:
-        data_test = file.read()
     with open(positive_file_train, 'r') as file:
         data_train = file.read()
     # Use re.findall to extract all positive sequences
-    matches_test = re.findall(pattern, data_test)
     matches_train = re.findall(pattern, data_train)
-    for match in matches_test:
-        chromosome, sequence = match
-        sequence = sequence.upper()
-        midpoint = len(sequence) // 2
-        # Extract 62 bases to the right and 62 bases to the left from the midpoint
-        extracted_sequence = sequence[midpoint - 62:midpoint + 62]
-        if (len(extracted_sequence) == 124):
-            complement = calculate_reverse_complement(extracted_sequence)
-            g_count_sequence = sequence.count('G')
-            g_count_complement = complement.count('G')
 
-            if g_count_sequence >= g_count_complement:
-                test_dict[extracted_sequence] = 1
-            else:
-                test_dict[complement] = 1
     for match in matches_train:
         chromosome, sequence = match
         sequence = sequence.upper()
@@ -142,52 +98,11 @@ def createDictWDLPS():
                    train_dict[extracted_sequence] = 1
             else:
                   train_dict[complement] = 1
-    return test_dict, train_dict
-def add_negatives_to_dict(test_dict, train_dict,negative_file):
-    with open(negative_file, 'r') as file:
-        data = file.read()
-    # Define a regular expression pattern to match sequences with 124 bases centered at position 124
-    pattern = r'>(chr\d+:\d+-\d+)\n([ACGTacgt]+)'
-    matches = re.findall(pattern, data)
-    for match in matches:
-        chromosome, sequence = match
-        sequence = sequence.upper()
-        midpoint = len(sequence) // 2
-        # Extract 62 bases to the right and 62 bases to the left from the midpoint
-        extracted_sequence = sequence[midpoint - 62:midpoint + 62]
-        if (len(extracted_sequence) == 124):
-            # Add the negative sequence to the appropriate dictionary with label 0
-            if re.search(r'\bchr1\b', chromosome):
-                test_dict[extracted_sequence] = 0
-            else:
-                train_dict[extracted_sequence] = 0
-
-    return test_dict, train_dict
+    return train_dict
 
 
 
 
-import re
-
-def add_negatives_to_dict_gen(test_dict, train_dict, negative_file):
-    with open(negative_file, 'r') as file:
-        data = file.read()
-
-    # Define a regular expression pattern to match sequences with headers
-    pattern = r'>([^\n]+)\n([ACGTacgt\n]+)'
-    matches = re.findall(pattern, data)
-
-    for header, sequence in matches:
-        sequence = sequence.replace('\n', '')  # Remove newline characters within the sequence
-        sequence = sequence.upper()
-
-        # Check if the header contains chr1_
-        if re.search(r'^chr1_', header):
-            test_dict[sequence] = 0
-        else:
-            train_dict[sequence] = 0
-
-    return test_dict, train_dict
 
 
 
@@ -204,9 +119,10 @@ def add_negatives_to_dict_WDLPS(dic, negative_file):
         extracted_sequence = sequence[midpoint - 62:midpoint + 62]
         if (len(extracted_sequence) == 124):
             sequence = sequence.upper()
-            dic[sequence] = 0
+            dic[extracted_sequence] = 0
 
     return dic
+
 def plot_metrics(history1, history2, history3, title1, title2, title3):
     # Plot training & validation loss values
     plt.figure(figsize=(12, 9))
@@ -227,23 +143,13 @@ def plot_metrics(history1, history2, history3, title1, title2, title3):
     plt.suptitle(f"{title1} vs {title2} vs {title3}")
     plt.tight_layout()
     plt.show()
-positive_file='WDLPS_iM.txt'
-positive_file_train='HEK_G4.txt'
-positive_file_test='WDLPS_G4.txt'
 
-#main with permutaions
 def main_permutions():
-    negative_file = 'WDLPS_G4_perm_neg.txt'
-    negative_file_train = 'HEK_G4_perm_neg.txt'
-    negative_file_test = 'WDLPS_G4_perm_neg.txt'
-    test_dict, train_dict = createDictWDLPS()
-    # test_dict, train_dict = add_negatives_to_dict(test_dict,train_dict,negative_file)
-    test_dict = add_negatives_to_dict_WDLPS(test_dict, negative_file_test)
+    positive_file_train='HEK_iM.txt'
+    negative_file_train = 'HEK_iM_perm_neg.txt'
+    train_dict = createDict(positive_file_train)
     train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
-    # Sizes of train and test dictionaries
-    print("Train set size:", len(train_dict))  # Number of samples in the train set
-    print("Test set size:", len(test_dict))  # Number of samples in the test set
-
+    test_dict=createTestDict('final_table_microarray.csv')
     items_train = list(train_dict.items())
     random.shuffle(items_train)
     shuffled_dict_train = dict(items_train)
@@ -267,25 +173,23 @@ def main_permutions():
 
     # Fit the model on your data
     history = my_model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
+    model_predictions = my_model.predict(x_test)
+    model_predictions = model_predictions.reshape(-1)
 
-    # Evaluate the model
-    test_scores = my_model.evaluate(x_test, y_test)
-    print("Test loss:", test_scores[0])
-    print("Test Accuracy:", test_scores[1])
-    print("Test AUC:", test_scores[2])
-    #plot_metric(history, title="Permutations Method")
+    # חישוב קורלציות
+    pearson_corr, _ = pearsonr(y_test, model_predictions)
+    spearman_corr, _ = spearmanr(y_test, model_predictions)
+
+    # הדפסת הקורלציות
+    print("Pearson Correlation:", pearson_corr)
+    print("Spearman Correlation:", spearman_corr)
     return history
-
-#main with rangom genertive
 def main_random():
-    negative_file='HEK_G4_neg.txt'
     positive_file_train='HEK_iM.txt'
-    negative_file_train='HEK_iM_neg.txt'
-    positive_file_test='WDLPS_iM.txt'
-    negative_file_test='WDLPS_iM_neg.txt'
-    test_dict, train_dict = createDict()
-    #test_dict,train_dict = createDict_neg_WDLPS(test_dict,train_dict)
-    test_dict,train_dict = add_negatives_to_dict(test_dict,train_dict,negative_file)
+    negative_file_train = 'HEK_iM_neg.txt'
+    train_dict = createDict(positive_file_train)
+    train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
+    test_dict=createTestDict('final_table_microarray.csv')
     items_train = list(train_dict.items())
     random.shuffle(items_train)
     shuffled_dict_train = dict(items_train)
@@ -307,30 +211,27 @@ def main_random():
     # Create the model
     my_model = model(x_train.shape[1:], window, st, nt)
 
-    # Compile the model
-    # my_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy', 'mae'])
-
     # Fit the model on your data
     history = my_model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
 
-    # Evaluate the model
-    test_scores = my_model.evaluate(x_test, y_test)
-    print("Test loss:", test_scores[0])
-    print("Test Accuracy:", test_scores[1])
-    print("Test AUC:", test_scores[2])
-    #plot_metric(history, title="Random Method")
+    model_predictions = my_model.predict(x_test)
+    model_predictions = model_predictions.reshape(-1)
+
+    # חישוב קורלציות
+    pearson_corr, _ = pearsonr(y_test, model_predictions)
+    spearman_corr, _ = spearmanr(y_test, model_predictions)
+
+    # הדפסת הקורלציות
+    print("Pearson Correlation:", pearson_corr)
+    print("Spearman Correlation:", spearman_corr)
     return history
 
-#main with rangom genertive
 def main_genNullSeq():
-    negative_file='negHekG4gen.txt'
     positive_file_train='HEK_iM.txt'
-    negative_file_train='HEK_iM_neg.txt'
-    positive_file_test='WDLPS_iM.txt'
-    negative_file_test='WDLPS_iM_neg.txt'
-    test_dict, train_dict = createDict()
-    #test_dict,train_dict = createDict_neg_WDLPS(test_dict,train_dict)
-    test_dict,train_dict= add_negatives_to_dict(test_dict,train_dict,negative_file)
+    negative_file_train = 'negHekiM.txt'
+    train_dict = createDict(positive_file_train)
+    train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
+    test_dict=createTestDict('final_table_microarray.csv')
     items_train = list(train_dict.items())
     random.shuffle(items_train)
     shuffled_dict_train = dict(items_train)
@@ -352,21 +253,24 @@ def main_genNullSeq():
     # Create the model
     my_model = model(x_train.shape[1:], window, st, nt)
 
-    # Compile the model
-    # my_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy', 'mae'])
-
     # Fit the model on your data
     history = my_model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
 
-    # Evaluate the model
-    test_scores = my_model.evaluate(x_test, y_test)
-    print("Test loss:", test_scores[0])
-    print("Test Accuracy:", test_scores[1])
-    print("Test AUC:", test_scores[2])
-    #plot_metric(history, title="Random Method")
-    return history
-history_permutations = main_permutions()
-#history_random = main_random()
-#history_genNull = main_genNullSeq()
+    model_predictions = my_model.predict(x_test)
+    model_predictions = model_predictions.reshape(-1)
 
-#plot_metrics(history_permutations, history_random,history_genNull, "Permutations Method", "Random Method","genNullSeq Method")
+    # חישוב קורלציות
+    pearson_corr, _ = pearsonr(y_test, model_predictions)
+    spearman_corr, _ = spearmanr(y_test, model_predictions)
+
+    # הדפסת הקורלציות
+    print("Pearson Correlation:", pearson_corr)
+    print("Spearman Correlation:", spearman_corr)
+    return history
+
+history_permutations = main_permutions()
+history_random = main_random()
+history_genNull = main_genNullSeq()
+model_predictions_permutations = history_permutations.model.predict(x_test)
+
+plot_metrics(history_permutations, history_random,history_genNull, "Permutations Method", "Random Method","genNullSeq Method")
