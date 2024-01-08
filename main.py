@@ -227,15 +227,15 @@ def plot_metrics(history1, history2, history3, title1, title2, title3):
     plt.suptitle(f"{title1} vs {title2} vs {title3}")
     plt.tight_layout()
     plt.show()
-positive_file='WDLPS_iM.txt'
-positive_file_train='HEK_G4.txt'
-positive_file_test='WDLPS_G4.txt'
+positive_file= 'pos_txt_files/WDLPS_iM.txt'
+positive_file_train= 'pos_txt_files/HEK_G4.txt'
+positive_file_test= 'pos_txt_files/WDLPS_G4.txt'
 
 #main with permutaions
 def main_permutions():
-    negative_file = 'WDLPS_G4_perm_neg.txt'
-    negative_file_train = 'HEK_G4_perm_neg.txt'
-    negative_file_test = 'WDLPS_G4_perm_neg.txt'
+    negative_file = 'txt_permutaion/WDLPS_G4_perm_neg.txt'
+    negative_file_train = 'txt_permutaion/HEK_G4_perm_neg.txt'
+    negative_file_test = 'txt_permutaion/WDLPS_G4_perm_neg.txt'
     test_dict, train_dict = createDictWDLPS()
     # test_dict, train_dict = add_negatives_to_dict(test_dict,train_dict,negative_file)
     test_dict = add_negatives_to_dict_WDLPS(test_dict, negative_file_test)
@@ -278,11 +278,11 @@ def main_permutions():
 
 #main with rangom genertive
 def main_random():
-    negative_file='HEK_G4_neg.txt'
-    positive_file_train='HEK_iM.txt'
-    negative_file_train='HEK_iM_neg.txt'
-    positive_file_test='WDLPS_iM.txt'
-    negative_file_test='WDLPS_iM_neg.txt'
+    negative_file= 'random_neg/HEK_G4_neg.txt'
+    positive_file_train= 'pos_txt_files/HEK_iM.txt'
+    negative_file_train= 'random_neg/HEK_iM_neg.txt'
+    positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
+    negative_file_test= 'random_neg/WDLPS_iM_neg.txt'
     test_dict, train_dict = createDict()
     #test_dict,train_dict = createDict_neg_WDLPS(test_dict,train_dict)
     test_dict,train_dict = add_negatives_to_dict(test_dict,train_dict,negative_file)
@@ -323,11 +323,11 @@ def main_random():
 
 #main with rangom genertive
 def main_genNullSeq():
-    negative_file='negHekG4gen.txt'
-    positive_file_train='HEK_iM.txt'
-    negative_file_train='HEK_iM_neg.txt'
-    positive_file_test='WDLPS_iM.txt'
-    negative_file_test='WDLPS_iM_neg.txt'
+    negative_file= 'genNellSeq/negHekG4gen.txt'
+    positive_file_train= 'pos_txt_files/HEK_iM.txt'
+    negative_file_train= 'random_neg/HEK_iM_neg.txt'
+    positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
+    negative_file_test= 'random_neg/WDLPS_iM_neg.txt'
     test_dict, train_dict = createDict()
     #test_dict,train_dict = createDict_neg_WDLPS(test_dict,train_dict)
     test_dict,train_dict= add_negatives_to_dict(test_dict,train_dict,negative_file)

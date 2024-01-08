@@ -45,6 +45,6 @@ def create_neg_from_positive(positive_file, negative_file):
     return negative_dict
 
 # Use the function to create a negative file and dictionary
-positive_file = 'WDLPS_iM.txt'  # Replace with your positive file path
-negative_file = 'WDLPS_iM_perm_neg.txt'  # Replace with the desired negative file name
+positive_file = 'pos_txt_files/WDLPS_iM.txt'  # Replace with your positive file path
+negative_file = 'txt_permutaion/WDLPS_iM_perm_neg.txt'  # Replace with the desired negative file name
 negatives_dict = create_neg_from_positive(positive_file, negative_file)

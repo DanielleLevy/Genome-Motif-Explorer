@@ -9,6 +9,7 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import pearsonr, spearmanr
+from sklearn.model_selection import train_test_split
 
 # Define the model hyperparameters
 n_filters = 256
@@ -20,7 +21,11 @@ epochs = 5
 window = random.randint(5, 20)  # Adjust the range as needed
 st = random.randint(1, 10)  # Adjust the range as needed
 nt = random.randint(1, 10)  # Adjust the range as needed
-seq_lengh = 124
+seq_lengh = 30
+def save_to_csv(x_test, y_test, model_predictions, filename):
+    df = pd.DataFrame({'x_test': list(x_test), 'y_test': list(y_test), 'model_predictions': list(model_predictions)})
+    df.to_csv(filename, index=False)
+
 def model(shape, window, st, nt):
     # Creating Input Layer
     in1 = Input(shape=shape)
@@ -37,18 +42,20 @@ def model(shape, window, st, nt):
     hidden1 = Dense(fc)(pool)
     hidden1 = Activation('relu')(hidden1)
 
-    # Creating Output Layer
-    output = Dense(1)(hidden1)
-    output = Activation('sigmoid')(output)
+    # Creating Output Layer for Regression (notice the lack of activation function)
+    output = Dense(1)(hidden1)  # No activation or linear activation
 
     # Final Model Definition
     mdl = Model(inputs=in1, outputs=output, name='{}_{}_{}nt_base_mdl_crossval'.format(st, nt, str(window)))
 
-    opt = tensorflow.keras.optimizers.legacy.Adam(lr=lr, beta_1=0.9, beta_2=0.99, epsilon=1e-8)
+    # Using a typical optimizer for regression
+    opt = tensorflow.keras.optimizers.Adam(learning_rate=lr, beta_1=0.9, beta_2=0.99, epsilon=1e-8)
 
-    mdl.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy', tensorflow.keras.metrics.AUC()])
+    # Compiling with a regression loss function
+    mdl.compile(loss='mean_squared_error', optimizer=opt, metrics=['mean_absolute_error'])
 
     return mdl
+
 def one_hot_encoding(sequence):
     mapping = {'A': [1, 0, 0, 0], 'C': [0, 1, 0, 0], 'G': [0, 0, 1, 0], 'T': [0, 0, 0, 1],  'N': [0, 0, 0, 0]}
     encoded_sequence = [mapping.get(base, [0, 0, 0, 0]) for base in sequence]
@@ -67,11 +74,17 @@ def createTestDict(positive_file_test):
     # Iterate through the rows of the DataFrame
     for index, row in data.iterrows():
         sequence = row['ProbeSeq']
+        sequence = sequence.upper()
+        midpoint = len(sequence) // 2
+        cutFromSeq = seq_lengh // 2
+        # Extract 62 bases to the right and 62 bases to the left from the midpoint
+        extracted_sequence = sequence[midpoint - cutFromSeq:midpoint + cutFromSeq]
         signal = row['iMab100nM_6.5_5']
-        test_dict[sequence] = signal
+        test_dict[extracted_sequence] = signal
 
 
     return test_dict
+
 def createDict(positive_file_train):
     # Define a regular expression pattern to match sequences with 124 bases centered at position 124
     pattern = r'>(chr\d+:\d+-\d+)\n([ACGTacgt]+)'
@@ -87,9 +100,10 @@ def createDict(positive_file_train):
         chromosome, sequence = match
         sequence = sequence.upper()
         midpoint = len(sequence) // 2
+        cutFromSeq=seq_lengh//2
         # Extract 62 bases to the right and 62 bases to the left from the midpoint
-        extracted_sequence = sequence[midpoint - 62:midpoint + 62]
-        if (len(extracted_sequence) == 124):
+        extracted_sequence = sequence[midpoint - cutFromSeq:midpoint + cutFromSeq]
+        if (len(extracted_sequence) == seq_lengh):
             complement = calculate_reverse_complement(extracted_sequence)
             g_count_sequence = sequence.count('G')
             g_count_complement = complement.count('G')
@@ -102,6 +116,32 @@ def createDict(positive_file_train):
 
 
 
+def createDataDict(csv_file):
+    data_dict = {}
+    data = pd.read_csv(csv_file)
+    for index, row in data.iterrows():
+        sequence = row['ProbeSeq'].upper()
+        midpoint = len(sequence) // 2
+        cutFromSeq = seq_lengh // 2
+        extracted_sequence = sequence[midpoint - cutFromSeq:midpoint + cutFromSeq]
+        signal = row['iMab100nM_6.5_5']
+        data_dict[extracted_sequence] = signal
+    return data_dict
+
+def splitData(data_dict, test_size=0.1):
+    items = list(data_dict.items())
+    sequences, signals = zip(*items)
+    sequences_train, sequences_test, signals_train, signals_test = train_test_split(sequences, signals, test_size=test_size)
+    return sequences_train, sequences_test, signals_train, signals_test
+
+def evaluateModel(model, sequences_test, signals_test):
+    x_test = np.array([one_hot_encoding(seq) for seq in sequences_test])
+    y_test = np.array(signals_test)
+    model_predictions = model.predict(x_test).reshape(-1)
+    pearson_corr, _ = pearsonr(y_test, model_predictions)
+    spearman_corr, _ = spearmanr(y_test, model_predictions)
+    print("Pearson Correlation:", pearson_corr)
+    print("Spearman Correlation:", spearman_corr)
 
 
 
@@ -115,9 +155,10 @@ def add_negatives_to_dict_WDLPS(dic, negative_file):
     for sequence in neg_sequences:
         sequence = sequence.upper()
         midpoint = len(sequence) // 2
+        cutFromSeq=seq_lengh//2
         # Extract 62 bases to the right and 62 bases to the left from the midpoint
-        extracted_sequence = sequence[midpoint - 62:midpoint + 62]
-        if (len(extracted_sequence) == 124):
+        extracted_sequence = sequence[midpoint - cutFromSeq:midpoint + cutFromSeq]
+        if (len(extracted_sequence) == seq_lengh):
             sequence = sequence.upper()
             dic[extracted_sequence] = 0
 
@@ -145,11 +186,11 @@ def plot_metrics(history1, history2, history3, title1, title2, title3):
     plt.show()
 
 def main_permutions():
-    positive_file_train='HEK_iM.txt'
-    negative_file_train = 'HEK_iM_perm_neg.txt'
+    positive_file_train= 'pos_txt_files/HEK_iM.txt'
+    negative_file_train = 'txt_permutaion/HEK_iM_perm_neg.txt'
     train_dict = createDict(positive_file_train)
     train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
-    test_dict=createTestDict('final_table_microarray.csv')
+    test_dict=createTestDict('microarray_files/final_table_microarray.csv')
     items_train = list(train_dict.items())
     random.shuffle(items_train)
     shuffled_dict_train = dict(items_train)
@@ -175,7 +216,7 @@ def main_permutions():
     history = my_model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
     model_predictions = my_model.predict(x_test)
     model_predictions = model_predictions.reshape(-1)
-
+    save_to_csv(sequences_test, y_test, model_predictions, 'microarray_files/permutations_data.csv')
     # חישוב קורלציות
     pearson_corr, _ = pearsonr(y_test, model_predictions)
     spearman_corr, _ = spearmanr(y_test, model_predictions)
@@ -185,11 +226,11 @@ def main_permutions():
     print("Spearman Correlation:", spearman_corr)
     return history
 def main_random():
-    positive_file_train='HEK_iM.txt'
-    negative_file_train = 'HEK_iM_neg.txt'
+    positive_file_train= 'pos_txt_files/HEK_iM.txt'
+    negative_file_train = 'random_neg/HEK_iM_neg.txt'
     train_dict = createDict(positive_file_train)
     train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
-    test_dict=createTestDict('final_table_microarray.csv')
+    test_dict=createTestDict('microarray_files/final_table_microarray.csv')
     items_train = list(train_dict.items())
     random.shuffle(items_train)
     shuffled_dict_train = dict(items_train)
@@ -216,6 +257,7 @@ def main_random():
 
     model_predictions = my_model.predict(x_test)
     model_predictions = model_predictions.reshape(-1)
+    save_to_csv(sequences_test, y_test, model_predictions, 'microarray_files/random_data.csv')
 
     # חישוב קורלציות
     pearson_corr, _ = pearsonr(y_test, model_predictions)
@@ -227,11 +269,11 @@ def main_random():
     return history
 
 def main_genNullSeq():
-    positive_file_train='HEK_iM.txt'
-    negative_file_train = 'negHekiM.txt'
+    positive_file_train= 'pos_txt_files/HEK_iM.txt'
+    negative_file_train = 'genNellSeq/negHekiM.txt'
     train_dict = createDict(positive_file_train)
     train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
-    test_dict=createTestDict('final_table_microarray.csv')
+    test_dict=createTestDict('microarray_files/final_table_microarray.csv')
     items_train = list(train_dict.items())
     random.shuffle(items_train)
     shuffled_dict_train = dict(items_train)
@@ -258,9 +300,10 @@ def main_genNullSeq():
 
     model_predictions = my_model.predict(x_test)
     model_predictions = model_predictions.reshape(-1)
+    save_to_csv(sequences_test, y_test, model_predictions, 'microarray_files/genNullSeq_data.csv')
 
     # חישוב קורלציות
-    pearson_corr, _ = pearsonr(y_test, model_predictions)
+    pearson_corr, _ = pearsonr(y_test, modl_predictions)
     spearman_corr, _ = spearmanr(y_test, model_predictions)
 
     # הדפסת הקורלציות
@@ -268,9 +311,29 @@ def main_genNullSeq():
     print("Spearman Correlation:", spearman_corr)
     return history
 
-history_permutations = main_permutions()
-history_random = main_random()
-history_genNull = main_genNullSeq()
-model_predictions_permutations = history_permutations.model.predict(x_test)
 
-plot_metrics(history_permutations, history_random,history_genNull, "Permutations Method", "Random Method","genNullSeq Method")
+def main_micro_test():
+
+    test_file = 'microarray_files/final_table_microarray.csv'
+
+    # Create full data dictionary from the test file
+    full_data_dict = createDataDict(test_file)
+
+    # Split the full data dictionary into training and testing sets
+    sequences_train, sequences_test, signals_train, signals_test = splitData(full_data_dict, test_size=0.1)
+
+
+    # Prepare training data
+    x_train = np.array([one_hot_encoding(seq) for seq in sequences_train])
+    y_train = np.array(signals_train)
+
+    # Create and train the model
+    my_model = model(x_train.shape[1:], window, st, nt)
+    my_model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs)
+
+    # Evaluate the model
+    evaluateModel(my_model, sequences_test, signals_test)
+
+
+
+main_micro_test()

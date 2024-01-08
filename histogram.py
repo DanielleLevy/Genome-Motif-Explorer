@@ -10,7 +10,7 @@ def histogram():
     # Create a dictionary to store both positive and negative sequences with classifications
     sequence_dict = {}
 
-    with open('negHekG4gen.txt', 'r') as file:
+    with open('genNellSeq/negHekG4gen.txt', 'r') as file:
         data = file.read()
 
     # Use re.findall to extract all positive sequences
