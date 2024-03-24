@@ -152,7 +152,7 @@ def generate_predictions_and_plot(sequences, output_dir='plots', output_filename
 # MAIN Execution
 if __name__ == "__main__":
     # Read BED file and FASTA file
-    bed_regions = read_bed_file('pos_bed_files/WDLPS_iM_high_confidence_peaks.bed')
+    bed_regions = read_bed_file('pos_bed_files/HEK_iM.bed')
     genome_sequence = read_fasta_file('genome/hg38.fa', 'chr1')
     for start_idx in range(0, len(genome_sequence), 20000):
         end_idx = min(start_idx + 20000, len(genome_sequence))

@@ -135,8 +135,8 @@ def createDictWDLPS():
         extracted_sequence = sequence[midpoint - 62:midpoint + 62]
         if (len(extracted_sequence) == 124):
             complement = calculate_reverse_complement(extracted_sequence)
-            g_count_sequence = sequence.count('G')
-            g_count_complement = complement.count('G')
+            g_count_sequence = sequence.count('C')
+            g_count_complement = complement.count('C')
 
             if g_count_sequence >= g_count_complement:
                    train_dict[extracted_sequence] = 1
@@ -227,19 +227,19 @@ def plot_metrics(history1, history2, history3, title1, title2, title3):
     plt.suptitle(f"{title1} vs {title2} vs {title3}")
     plt.tight_layout()
     plt.show()
-positive_file= 'pos_txt_files/WDLPS_iM.txt'
+positive_file= 'pos_txt_files/HEK_iM.txt'
 positive_file_train= 'pos_txt_files/HEK_G4.txt'
 positive_file_test= 'pos_txt_files/WDLPS_G4.txt'
 
 #main with permutaions
 def main_permutions():
-    negative_file = 'txt_permutaion/WDLPS_G4_perm_neg.txt'
-    negative_file_train = 'txt_permutaion/HEK_G4_perm_neg.txt'
+    negative_file = 'txt_permutaion/HEK_iM_perm_neg.txt'
+    negative_file_train = 'txt_permutaion/HEK_iM_perm_neg.txt'
     negative_file_test = 'txt_permutaion/WDLPS_G4_perm_neg.txt'
-    test_dict, train_dict = createDictWDLPS()
-    # test_dict, train_dict = add_negatives_to_dict(test_dict,train_dict,negative_file)
-    test_dict = add_negatives_to_dict_WDLPS(test_dict, negative_file_test)
-    train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
+    test_dict, train_dict = createDict()
+    test_dict, train_dict = add_negatives_to_dict(test_dict,train_dict,negative_file)
+    #test_dict = add_negatives_to_dict_WDLPS(test_dict, negative_file_test)
+    #train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
     # Sizes of train and test dictionaries
     print("Train set size:", len(train_dict))  # Number of samples in the train set
     print("Test set size:", len(test_dict))  # Number of samples in the test set
@@ -270,6 +270,21 @@ def main_permutions():
 
     # Evaluate the model
     test_scores = my_model.evaluate(x_test, y_test)
+    # First, get the predictions
+    predictions = my_model.predict(x_test)
+
+    # Then, you can create a DataFrame and save it as before
+    import pandas as pd
+
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+    })
+
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_seq_perm.csv'
+    df.to_csv(csv_file_path, index=False)
     print("Test loss:", test_scores[0])
     print("Test Accuracy:", test_scores[1])
     print("Test AUC:", test_scores[2])
@@ -278,7 +293,7 @@ def main_permutions():
 
 #main with rangom genertive
 def main_random():
-    negative_file= 'random_neg/HEK_G4_neg.txt'
+    negative_file= 'random_neg/HEK_iM_neg.txt'
     positive_file_train= 'pos_txt_files/HEK_iM.txt'
     negative_file_train= 'random_neg/HEK_iM_neg.txt'
     positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
@@ -315,6 +330,24 @@ def main_random():
 
     # Evaluate the model
     test_scores = my_model.evaluate(x_test, y_test)
+    my_model.save("model_random.keras")
+    # First, get the predictions
+    predictions = my_model.predict(x_test)
+
+    # Then, you can create a DataFrame and save it as before
+    import pandas as pd
+
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+    })
+
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_seq_random.csv'
+    df.to_csv(csv_file_path, index=False)
+
+    print(f"Predictions and true labels have been saved to {csv_file_path}.")
     print("Test loss:", test_scores[0])
     print("Test Accuracy:", test_scores[1])
     print("Test AUC:", test_scores[2])
@@ -323,7 +356,7 @@ def main_random():
 
 #main with rangom genertive
 def main_genNullSeq():
-    negative_file= 'genNellSeq/negHekG4gen.txt'
+    negative_file= 'genNellSeq/negHekiM.txt'
     positive_file_train= 'pos_txt_files/HEK_iM.txt'
     negative_file_train= 'random_neg/HEK_iM_neg.txt'
     positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
@@ -357,16 +390,31 @@ def main_genNullSeq():
 
     # Fit the model on your data
     history = my_model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
-
     # Evaluate the model
     test_scores = my_model.evaluate(x_test, y_test)
+    # First, get the predictions
+    predictions = my_model.predict(x_test)
+
+    # Then, you can create a DataFrame and save it as before
+    import pandas as pd
+
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+    })
+
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_seq_gen.csv'
+    df.to_csv(csv_file_path, index=False)
     print("Test loss:", test_scores[0])
     print("Test Accuracy:", test_scores[1])
     print("Test AUC:", test_scores[2])
+
     #plot_metric(history, title="Random Method")
     return history
-history_permutations = main_permutions()
-#history_random = main_random()
+#history_permutations = main_permutions()
+history_random = main_random()
 #history_genNull = main_genNullSeq()
 
 #plot_metrics(history_permutations, history_random,history_genNull, "Permutations Method", "Random Method","genNullSeq Method")

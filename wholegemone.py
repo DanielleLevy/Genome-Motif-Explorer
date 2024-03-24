@@ -25,11 +25,11 @@ st = random.randint(1, 10)
 nt = random.randint(1, 10)
 seq_length = 124
 class Sequence:
-    def __init__(self, sequence, coordinate ,labels, label=None):
+    def __init__(self, sequence, coordinate ,label_nuc, label=None):
         self.sequence = sequence
         self.coordinate = coordinate
         self.label = label
-        self.labels =labels
+        self.label_first_nuc =label_nuc
         self.prediction = None
     def set_prediction(self, prediction):
         self.prediction = prediction
@@ -98,7 +98,7 @@ def createTrainlist():
             g_count_complement = complement.count('G')
 
             sequence_to_use = extracted_sequence if g_count_sequence >= g_count_complement else complement
-            train_sequences.append(Sequence(sequence_to_use, chromosome, [], 1))
+            train_sequences.append(Sequence(sequence_to_use, chromosome, 0, 1))
 
 
     return train_sequences
@@ -153,7 +153,8 @@ def extract_sequences_and_labels(genome_sequence, bed_regions, chunk_start_index
     for i in range(len(genome_sequence) - sequence_length + 1):
         seq = genome_sequence[i:i + sequence_length]
         label = max(labeled_genome[i:i + sequence_length])
-        sequence_objects.append(Sequence(seq, chunk_start_index + i, labeled_genome[i:i + sequence_length], label))
+        label_first_nucleotide = labeled_genome[i]
+        sequence_objects.append(Sequence(seq, chunk_start_index + i, label_first_nucleotide, label))
     return sequence_objects
 
 
@@ -178,8 +179,8 @@ def save_sequences_to_csv(sequences, filename, mode='a'):
 # Main function
 if __name__ == "__main__":
     # Part 1: Training the model with training data
-    positive_file = 'HEK_iM.txt'
-    negative_file_train = 'HEK_iM_perm_neg.txt'
+    positive_file = 'pos_txt_files/HEK_iM.txt'
+    negative_file_train = 'txt_permutaion/HEK_iM_perm_neg.txt'
 
     # Generate training sequences
     train_sequences = createTrainlist()
@@ -194,10 +195,10 @@ if __name__ == "__main__":
     nn_model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs)
 
     # Part 2: Processing the genome sequence in chunks
-    bed_regions = read_bed_file('WDLPS_iM_high_confidence_peaks.bed')
-    genome_sequence = read_fasta_file('hg38.fa', 'chr1')
-    auc_metric = AUC()
-
+    bed_regions = read_bed_file('pos_bed_file_124/Hek_iM_124.bed')
+    genome_sequence = read_fasta_file('genome/hg38.fa', 'chr1')
+    #make genome_sequence without N:
+    genome_sequence = genome_sequence.replace('N','')
     segment_size = 200000
     for start_idx in range(10000, len(genome_sequence), segment_size):
         start = time.time()
@@ -218,15 +219,12 @@ if __name__ == "__main__":
         for seq_obj, prediction in zip(sequences, predictions):
             seq_obj.set_prediction(prediction[0])
         # Update AUC metric
-        auc_metric.update_state(labels, predictions)
         # Save to CSV
         csv_mode = 'w' if start_idx == 10000 else 'a'
         save_sequences_to_csv(sequences, 'sequence_predictions_WDLPS_iM.csv', mode=csv_mode)
         end = time.time()
 
         # Print final AUC score
-    final_auc_score = auc_metric.result().numpy()
-    print("Final AUC Score:", final_auc_score)
     print("Processing complete.")
 
 

@@ -23,7 +23,6 @@ seq_lengh = 124
 # Reading the data from the file into a DataFrame
 columns = ['Chromosome', 'Start', 'End', 'Score']
 df_microarray = pd.read_csv('microarray_files/signals_data_HEK_iM.csv')
-df_microarray_negative = pd.read_csv('microarray_files/signals_data_negHEKiMgen.csv')
 
 import pandas as pd
 
@@ -255,11 +254,10 @@ def add_negatives_to_listWD(listpos, negative_file, df_negative):
             listpos.append(SequenceData(chrom_parts[0], extracted_sequence, 0, accessibility_score, start_pos, end_pos))
 
     return listpos
-
-
-def main_random_access():
-    positive_file = 'pos_txt_files\HEK_iM.txt'
-    negative_file = 'random_neg\HEK_iM_neg.txt'
+def main_perm():
+    positive_file = 'pos_txt_files/HEK_iM.txt'
+    negative_file = 'txt_permutaion/HEK_iM_perm_neg.txt'
+    df_microarray_negative = pd.read_csv('microarray_files/signals_data_HEK_iM_perm.csv')
 
     # Create the lists to store SequenceData objects
     test_data, train_data = createlistpos(positive_file,df_microarray)
@@ -309,7 +307,92 @@ def main_random_access():
     )
     # Evaluate the model
     test_scores = my_model.evaluate([x_test, x_test_microarray], y_test)
+    # First, get the predictions
     predictions = my_model.predict([x_test, x_test_microarray])
+
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+    })
+
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_micro_perm.csv'
+    df.to_csv(csv_file_path, index=False)
+
+    # Evaluate the model
+    print("Test loss:", test_scores[0])
+    print("Test Accuracy:", test_scores[1])
+    print("Test AUC:", test_scores[2])
+
+    return history
+
+
+def main_random():
+    positive_file = 'pos_txt_files\HEK_iM.txt'
+    negative_file = 'random_neg\HEK_iM_neg.txt'
+
+    # Create the lists to store SequenceData objects
+    test_data, train_data = createlistpos(positive_file,df_microarray)
+    df_microarray_negative = pd.read_csv('microarray_files/signals_data_HEK_iM_random.csv')
+
+    # Add negative sequences to the appropriate lists
+    test_data, train_data = add_negatives_to_list(test_data, train_data, negative_file,df_microarray_negative)
+
+    # Shuffle the data
+    random.shuffle(train_data)
+    random.shuffle(test_data)
+
+    # Extract sequences and classifications from the list of SequenceData objects
+    sequences_train = [seq.sequence for seq in train_data]
+    classifications_train = [seq.classification for seq in train_data]
+    sequences_test = [seq.sequence for seq in test_data]
+    classifications_test = [seq.classification for seq in test_data]
+
+    # Convert the sequences to numerical input data (X) with padding
+    x_train = np.array([one_hot_encoding(seq) for seq in sequences_train])
+    y_train = np.array(classifications_train)
+
+    x_test = np.array([one_hot_encoding(seq) for seq in sequences_test])
+    y_test = np.array(classifications_test)
+
+    # Extract microarray signals from SequenceData objects
+    # Convert microarray_signal to float, handling any missing values
+    x_train_microarray = np.array([float(seq.microarray_signal) if seq.microarray_signal is not None else 0.0
+                                  for seq in train_data]).reshape(-1, 1)
+    # Convert microarray_signal to float, handling any missing values
+    x_test_microarray = np.array([float(seq.microarray_signal) if seq.microarray_signal is not None else 0.0
+                                  for seq in test_data]).reshape(-1, 1)
+
+    # Create the model
+    my_model = model(x_train.shape[1:], window, st, nt)
+
+
+
+    # Convert arrays to a consistent dtype if needed
+    x_train_microarray = x_train_microarray.astype(np.float32)
+
+    # Fit the model (try with individual arrays if necessary to isolate the issue)
+    history = my_model.fit(
+        [x_train, x_train_microarray],
+        y_train,
+        batch_size=batch_size,
+        epochs=epochs
+    )
+    # Evaluate the model
+    test_scores = my_model.evaluate([x_test, x_test_microarray], y_test)
+    # First, get the predictions
+    predictions = my_model.predict([x_test, x_test_microarray])
+
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+    })
+
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_micro_rand.csv'
+    df.to_csv(csv_file_path, index=False)
 
     # Evaluate the model
     print("Test loss:", test_scores[0])
@@ -432,11 +515,10 @@ def main_genNullSeq_access_HEK():
     return history
 
 
-def main_genNullSeq_access():
+def main_genNullSeq():
     positive_file = 'pos_txt_files/HEK_iM.txt'
     negative_file = 'genNellSeq/negHEKiM.txt'
-    df_positive = pd.read_csv('atac_files/HEK_iM_SCORES', sep=',', header=0, names=columns)
-    df_negative = pd.read_csv('atac_files/negHEKiM_SCORES', sep=',', header=0, names=columns)
+    df_microarray_negative = pd.read_csv('microarray_files/signals_data_negHekiMgen.csv')
 
     # Create the lists to store SequenceData objects
     test_data, train_data = createlistpos(positive_file, df_microarray)
@@ -481,6 +563,18 @@ def main_genNullSeq_access():
 
     # Evaluate the model
     test_scores = my_model.evaluate([x_test, x_test_microarray], y_test)
+    # First, get the predictions
+    predictions = my_model.predict([x_test, x_test_microarray])
+
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+    })
+
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_micro_gen.csv'
+    df.to_csv(csv_file_path, index=False)
 
     # Save results and print evaluation metrics
     print("Test loss:", test_scores[0])
@@ -490,5 +584,6 @@ def main_genNullSeq_access():
     return history
 
 
-history_random = main_random_access()
-history_random = main_genNullSeq_access()
+main_perm()
+main_random()
+main_genNullSeq()

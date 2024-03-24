@@ -11,6 +11,7 @@ import numpy as np
 from scipy.stats import pearsonr, spearmanr
 from sklearn.model_selection import train_test_split
 
+
 # Define the model hyperparameters
 n_filters = 256
 kernel_size = 12
@@ -303,13 +304,27 @@ def main_genNullSeq():
     save_to_csv(sequences_test, y_test, model_predictions, 'microarray_files/genNullSeq_data.csv')
 
     # חישוב קורלציות
-    pearson_corr, _ = pearsonr(y_test, modl_predictions)
+    pearson_corr, _ = pearsonr(y_test, model_predictions)
     spearman_corr, _ = spearmanr(y_test, model_predictions)
 
     # הדפסת הקורלציות
     print("Pearson Correlation:", pearson_corr)
     print("Spearman Correlation:", spearman_corr)
     return history
+def evaluateModel(model, sequences_test, signals_test):
+    # Prepare the test data for prediction
+    x_test = np.array([one_hot_encoding(seq) for seq in sequences_test])
+    y_test = np.array(signals_test)
+
+    # Predict signals with the model
+    model_predictions = model.predict(x_test).reshape(-1)
+
+    # Calculate Pearson correlation
+    pearson_corr, _ = pearsonr(y_test, model_predictions)
+    print("Pearson Correlation:", pearson_corr)
+
+    # Return the actual signals and model predictions for further analysis
+    return y_test, model_predictions
 
 
 def main_micro_test():
@@ -333,7 +348,31 @@ def main_micro_test():
 
     # Evaluate the model
     evaluateModel(my_model, sequences_test, signals_test)
+    import matplotlib.pyplot as plt
+    from scipy.stats import pearsonr
+    # Assuming your model is already trained and you have sequences_test and signals_test
+    y_test, model_predictions = evaluateModel(my_model, sequences_test, signals_test)
 
+    # Now plot the scatter plot of actual vs. predicted signals
+    plt.figure(figsize=(10, 6))
+    plt.scatter(y_test, model_predictions, alpha=0.5)
+    plt.title('Actual vs. Predicted Microarray Signals')
+    plt.xlabel('Actual Signals')
+    plt.ylabel('Predicted Signals')
+
+    # Calculate Pearson correlation for annotation
+    pearson_corr, p_value = pearsonr(y_test, model_predictions)
+    # Annotate Pearson correlation, p-value, and number of points
+    plt.annotate(f'Pearson Correlation: {pearson_corr:.2f}\nP-value: {p_value:.2e}\nNumber of points: {len(y_test)}',
+                 xy=(0.05, 0.95), xycoords='axes fraction',
+                 bbox=dict(boxstyle="round", fc="w"))
+
+
+
+
+    plt.grid(True)
+    plt.show()
 
 
 main_micro_test()
+

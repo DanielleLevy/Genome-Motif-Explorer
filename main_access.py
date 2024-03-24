@@ -22,8 +22,8 @@ nt = random.randint(1, 10)  # Adjust the range as needed
 seq_lengh = 124
 # Reading the data from the file into a DataFrame
 columns = ['Chromosome', 'Start', 'End', 'Score']
-df_positive = pd.read_csv('atac_files/HEK_G4_SCORES', sep=',', header=0, names=columns)
-df_negative = pd.read_csv('atac_files/HEK_G4_neg_SCORES', sep=',', header=0, names=columns)
+df_positive = pd.read_csv('atac_files/HEK_iM_SCORES', sep=',', header=0, names=columns)
+df_negative = pd.read_csv('atac_files/HEK_iM_neg_SCORES', sep=',', header=0, names=columns)
 
 import pandas as pd
 
@@ -277,7 +277,18 @@ def main_random_access():
 
     # Evaluate the model
     test_scores = my_model.evaluate([x_test, x_test_accessibility], y_test)
+    # First, get the predictions
     predictions = my_model.predict([x_test, x_test_accessibility])
+
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+    })
+
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_acc_random.csv'
+    df.to_csv(csv_file_path, index=False)
 
     # Evaluate the model
     print("Test loss:", test_scores[0])
@@ -387,8 +398,19 @@ def main_genNullSeq_access():
 
     # Evaluate the model
     test_scores = my_model.evaluate([x_test, x_test_accessibility], y_test)
+    # First, get the predictions
+    predictions = my_model.predict([x_test, x_test_accessibility])
 
 
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+    })
+
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_acc_gen.csv'
+    df.to_csv(csv_file_path, index=False)
     print("Test loss:", test_scores[0])
     print("Test Accuracy:", test_scores[1])
     print("Test AUC:", test_scores[2])

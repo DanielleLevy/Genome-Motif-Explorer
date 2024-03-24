@@ -22,8 +22,7 @@ nt = random.randint(1, 10)  # Adjust the range as needed
 seq_lengh = 124
 # Reading the data from the file into a DataFrame
 columns = ['Chromosome', 'Start', 'End', 'Score']
-df_microarray = pd.read_csv('microarray_files/signals_data_WDLPS_iM.csv')
-df_microarray_negative = pd.read_csv('microarray_files/signals_data_negWDLPSiMgen.csv')
+df_microarray = pd.read_csv('microarray_files/signals_data_HEK_iM.csv')
 
 import pandas as pd
 
@@ -91,6 +90,9 @@ def model(shape, window, st, nt):
     mdl.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy', tensorflow.keras.metrics.AUC()])
 
     return mdl
+
+
+
 
 
 def one_hot_encoding(sequence):
@@ -269,11 +271,11 @@ def add_negatives_to_listWD(listpos, negative_file, df_negative):
 
 
 def main_random_access():
-    positive_file = 'pos_txt_files\WDLPS_iM.txt'
-    negative_file = 'random_neg\WDLPS_iM_neg.txt'
-    df_positive = pd.read_csv('atac_files\WDLPS_iM_SCORES', sep=',', header=0, names=columns)
-    df_negative = pd.read_csv('atac_files\WDLPS_iM_neg_SCORES', sep=',', header=0, names=columns)
-
+    positive_file = 'pos_txt_files\HEK_iM.txt'
+    negative_file = 'random_neg\HEK_iM_neg.txt'
+    df_positive = pd.read_csv('atac_files\HEK_iM_SCORES', sep=',', header=0, names=columns)
+    df_negative = pd.read_csv('atac_files\HEK_iM_neg_SCORES', sep=',', header=0, names=columns)
+    df_microarray_negative = pd.read_csv('microarray_files\signals_data_HEK_iM_random.csv')
     # Create the lists to store SequenceData objects
     test_data, train_data = createlistpos(positive_file, df_positive,df_microarray)
 
@@ -311,11 +313,6 @@ def main_random_access():
     my_model = model(x_train.shape[1:], window, st, nt)
 
 
-    # Check data types
-    print(f"x_train dtype: {x_train.dtype}, shape: {x_train.shape}")
-    print(f"x_train_accessibility dtype: {x_train_accessibility.dtype}, shape: {x_train_accessibility.shape}")
-    print(f"x_train_microarray dtype: {x_train_microarray.dtype}, shape: {x_train_microarray.shape}")
-    print(f"y_train dtype: {y_train.dtype}, shape: {y_train.shape}")
 
     # Convert arrays to a consistent dtype if needed
     x_train_microarray = x_train_microarray.astype(np.float32)
@@ -326,11 +323,22 @@ def main_random_access():
         y_train,
         batch_size=batch_size,
         epochs=epochs
-    )
+        )
+
     # Evaluate the model
     test_scores = my_model.evaluate([x_test, x_test_accessibility, x_test_microarray], y_test)
+    # First, get the predictions
     predictions = my_model.predict([x_test, x_test_accessibility, x_test_microarray])
 
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+    })
+
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_acc_mic_ran.csv'
+    df.to_csv(csv_file_path, index=False)
     # Evaluate the model
     print("Test loss:", test_scores[0])
     print("Test Accuracy:", test_scores[1])
@@ -339,7 +347,7 @@ def main_random_access():
     return history
 
 
-def main_random_access():
+def main_random_access_WD():
     positive_file_train = 'pos_txt_files/WDLPS_iM.txt'
     negative_file_train = 'random_negWDLPS_iM_neg.txt'
     positive_file_test = 'pos_txt_files/WDLPS_iM.txt'
@@ -387,10 +395,9 @@ def main_random_access():
 
     # Evaluate the model
     test_scores = my_model.evaluate([x_test, x_test_accessibility, x_test_microarray], y_test)
-    predictions = my_model.predict([x_test, x_test_accessibility, x_test_microarray])
+
 
     # Save results and print evaluation metrics
-    save_sequence_data_to_csv(sequences_test, classifications_test, predictions, x_test_accessibility, 'atac_files/random_access_WDLPS_data.csv')
     print("Test loss:", test_scores[0])
     print("Test Accuracy:", test_scores[1])
     print("Test AUC:", test_scores[2])
@@ -404,7 +411,6 @@ def main_genNullSeq_access_WDLPS():
     negative_file = 'genNellSeq/negWDLPSiM.txt'
     df_positive = pd.read_csv('atac_files/WDLPS_iM_SCORES', sep=',', header=0, names=columns)
     df_negative = pd.read_csv('atac_files/negWDLPSiM_SCORES', sep=',', header=0, names=columns)
-
     # Create the lists to store SequenceData objects
     test_data, train_data = createlistpos(positive_file, df_positive)
 
@@ -453,16 +459,32 @@ def main_genNullSeq_access_WDLPS():
 
 
 def main_genNullSeq_access():
-    positive_file = 'pos_txt_files/WDLPS_iM.txt'
-    negative_file = 'genNellSeq/negWDLPSiM.txt'
-    df_positive = pd.read_csv('atac_files/WDLPS_iM_SCORES', sep=',', header=0, names=columns)
-    df_negative = pd.read_csv('atac_files/negWDLPSiM_SCORES', sep=',', header=0, names=columns)
+    positive_file = 'pos_txt_files/HEK_iM.txt'
+    negative_file = 'genNellSeq/negHEKiM.txt'
+    df_positive = pd.read_csv('atac_files/HEK_iM_SCORES', sep=',', header=0, names=columns)
+    df_negative = pd.read_csv('atac_files/negHEKiM_SCORES', sep=',', header=0, names=columns)
+    df_microarray_negative = pd.read_csv('microarray_files/signals_data_negHekiMgen.csv')
 
     # Create the lists to store SequenceData objects
     test_data, train_data = createlistpos(positive_file, df_positive, df_microarray)
 
     # Add negative sequences to the appropriate lists
     test_data, train_data = add_negatives_to_list(test_data, train_data, negative_file, df_negative, df_microarray_negative)
+
+    def print_sample_sequence_data(train_data, test_data, num_samples=5):
+        # Shuffle both datasets to ensure a random selection of samples
+        random.shuffle(train_data)
+        random.shuffle(test_data)
+
+        print("Sample Positive Data:")
+        for data in train_data[:num_samples]:
+            print(data.__dict__)
+        print("\nSample Negative Data:")
+        for data in test_data[:num_samples]:
+            print(data.__dict__)
+
+    # Call the function to print sample data
+    print_sample_sequence_data(train_data, test_data)
 
     # Shuffle the data
     random.shuffle(train_data)
@@ -501,10 +523,19 @@ def main_genNullSeq_access():
         batch_size=batch_size,
         epochs=epochs
     )
-
     # Evaluate the model
     test_scores = my_model.evaluate([x_test, x_test_accessibility, x_test_microarray], y_test)
+    predictions = my_model.predict([x_test, x_test_accessibility, x_test_microarray])
 
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+    })
+
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_acc_mic_gen.csv'
+    df.to_csv(csv_file_path, index=False)
     # Save results and print evaluation metrics
     print("Test loss:", test_scores[0])
     print("Test Accuracy:", test_scores[1])
@@ -513,5 +544,5 @@ def main_genNullSeq_access():
     return history
 
 
-
+#main_random_access()
 history_random = main_genNullSeq_access()
