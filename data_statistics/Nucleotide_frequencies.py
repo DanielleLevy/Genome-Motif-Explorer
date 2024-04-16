@@ -1,51 +1,66 @@
 import re
 import pandas as pd
 import matplotlib.pyplot as plt
-# Function to parse FASTA file and calculate nucleotide frequencies
-def createlist(file):
-    # Define a regular expression pattern to match sequences with 124 bases centered at position 124
+
+
+def createlist(file, process_extended_logic=False):
+    # Define a regular expression pattern to match sequences
     pattern = r'>(chr\d+:\d+-\d+)\n([ACGTacgt]+)'
     seq_list = []
     with open(file, 'r') as file:
         data = file.read()
-
-    # Use re.findall to extract all positive sequences
     matches = re.findall(pattern, data)
 
     for match in matches:
         chromosome, sequence = match
         sequence = sequence.upper()
-        midpoint = len(sequence) // 2
-        # Extract 62 bases to the right and 62 bases to the left from the midpoint
-        extracted_sequence = sequence[midpoint - 62:midpoint + 62]
-        if (len(extracted_sequence) == 124):
-            seq_list.append(extracted_sequence)
+        if process_extended_logic:
+            midpoint = len(sequence) // 2
+            extracted_sequence = sequence[midpoint - 62:midpoint + 62]
+            if len(extracted_sequence) == 124:
+                complement = calculate_reverse_complement(extracted_sequence)
+                c_count_sequence = extracted_sequence.count('C')
+                c_count_complement = complement.count('C')
+                if c_count_sequence >= c_count_complement:
+                    seq_list.append(extracted_sequence)  # add the original or complement based on your logic
+                else:
+                    seq_list.append(complement)
+        else:
+            seq_list.append(sequence)  # Add the whole sequence otherwise
 
     return seq_list
+
+
 # Function to calculate nucleotide frequencies
+def calculate_reverse_complement(sequence):
+    complement_dict = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
+    reversed_sequence = sequence[::-1]
+    return ''.join(complement_dict[base] for base in reversed_sequence)
+
+
 def calculate_frequencies(seq_list):
     nucleotide_counts = {'A': 0, 'C': 0, 'G': 0, 'T': 0}
     for seq in seq_list:
         for nucleotide in nucleotide_counts.keys():
             nucleotide_counts[nucleotide] += seq.count(nucleotide)
     total_nucleotides = sum(nucleotide_counts.values())
-    frequencies = {nt: count / total_nucleotides for nt, count in nucleotide_counts.items()}
-    return frequencies
+    return {nt: count / total_nucleotides for nt, count in nucleotide_counts.items()}
 
-# Assuming you have a file for each condition for WDLPS and HEK
+
+# Assuming you have a file for each condition
 files = {
-    'WDLPS_Positive': 'pos_txt_files/WDLPS_iM.txt',
-    'WDLPS_RandomNegative': 'random_neg/WDLPS_iM_neg.txt',
-    'WDLPS_NegativePermutation': 'txt_permutaion/WDLPS_iM_perm_neg.txt',
-    'WDLPS_NegativeGenNullSeq': 'genNellSeq/negWDLPSiM.txt',
-    'HEK_Positive': 'pos_txt_files/HEK_iM.txt',
-    'HEK_RandomNegative': 'random_neg/HEK_iM_neg.txt',
-    'HEK_NegativePermutation': 'txt_permutaion/HEK_iM_perm_neg.txt',
-    'HEK_NegativeGenNullSeq': 'genNellSeq/negHekiM.txt'
+    'WDLPS_Positive': '../pos_txt_files/WDLPS_iM.txt',
+    'WDLPS_RandomNegative': '../random_neg/WDLPS_iM_neg.txt',
+    'WDLPS_NegativePermutation': '../txt_permutaion/WDLPS_iM_perm_neg.txt',
+    'WDLPS_NegativeGenNullSeq': '../genNellSeq/negWDLPSiM.txt',
+    'HEK_Positive': '../pos_txt_files/HEK_iM.txt',
+    'HEK_RandomNegative': '../random_neg/HEK_iM_neg.txt',
+    'HEK_NegativePermutation': '../txt_permutaion/HEK_iM_perm_neg.txt',
+    'HEK_NegativeGenNullSeq': '../genNellSeq/negHekiM.txt'
 }
 
-# Calculate frequencies for each file
-seq_lists = {group: createlist(file_path) for group, file_path in files.items()}
+# Calculate sequences, process extended logic only for positive datasets
+seq_lists = {group: createlist(file_path, 'Positive' in group) for group, file_path in files.items()}
 
 # Calculate frequencies for each group
 frequencies = {group: calculate_frequencies(seq_list) for group, seq_list in seq_lists.items()}
@@ -62,7 +77,7 @@ T_values = df_frequencies['T'].values
 
 # Define the categories and groups for labeling
 groups = ['WDLPS', 'HEK']
-subcategories = ['Positive', 'Random', 'Permutation', 'GenNullSeq']
+subcategories = ['Positive', 'Random', 'dishuffle', 'GenNullSeq']
 
 # Setup the plot
 fig, ax = plt.subplots(figsize=(10, 6))  # You can adjust the values accordingly
@@ -88,8 +103,8 @@ ax.set_yticks(y_positions)
 ax.set_yticklabels((subcategories * 2), fontsize=10)  # Repeat labels appropriately
 
 # Position the group labels between the 3rd and 2nd bars from the top within each group
-ax.text(1.05, 1.5, 'HEK', ha='right', va='center', fontsize=12, fontweight='bold', color='black', transform=ax.transData)
-ax.text(1.08, 6.5, 'WDLPS', ha='right', va='center', fontsize=12, fontweight='bold', color='black', transform=ax.transData)
+ax.text(1.15, 1.5, 'HEK', ha='right', va='center', fontsize=12, fontweight='bold', color='black', transform=ax.transData)
+ax.text(1.18, 6.5, 'WDLPS', ha='right', va='center', fontsize=12, fontweight='bold', color='black', transform=ax.transData)
 
 # Set labels for axes
 ax.set_xlabel('Nucleotide frequency', fontsize=12, fontweight='bold')
