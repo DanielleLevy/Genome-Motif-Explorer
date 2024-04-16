@@ -128,8 +128,8 @@ def createlistpos(positive_file, df_microarray):
         extracted_sequence = sequence[midpoint - 62:midpoint + 62]
         if len(extracted_sequence) == 124:
             complement = calculate_reverse_complement(extracted_sequence)
-            g_count_sequence = extracted_sequence.count('C')
-            g_count_complement = complement.count('C')
+            c_count_sequence = extracted_sequence.count('C')
+            c_count_complement = complement.count('C')
             chrom_parts = chromosome.split(':')
             start_pos = int(chrom_parts[1].split('-')[0]) + (midpoint - 62)
             end_pos = int(chrom_parts[1].split('-')[0]) + (midpoint + 62)
@@ -137,7 +137,7 @@ def createlistpos(positive_file, df_microarray):
 
             microarray_signal = microarray_signals[i] if i < len(microarray_signals) else None
 
-            if g_count_sequence >= g_count_complement:
+            if c_count_sequence >= c_count_complement:
                 seq_data = SequenceData(chrom_parts[0], extracted_sequence, 1, start_pos, end_pos, microarray_signal)
             else:
                 seq_data = SequenceData(chrom_parts[0], complement, 1, start_pos, end_pos, microarray_signal)
@@ -171,8 +171,8 @@ def createlistposWD(positive_file, df_positive):
         extracted_sequence = sequence[midpoint - 62:midpoint + 62]
         if len(extracted_sequence) == 124:
             complement = calculate_reverse_complement(extracted_sequence)
-            g_count_sequence = extracted_sequence.count('C')
-            g_count_complement = complement.count('C')
+            c_count_sequence = extracted_sequence.count('C')
+            c_count_complement = complement.count('C')
             chrom_parts = chromosome.split(':')
             start_pos = int(chrom_parts[1].split('-')[0]) + (midpoint - 62)
             end_pos = int(chrom_parts[1].split('-')[0]) + (midpoint + 62)
@@ -181,7 +181,7 @@ def createlistposWD(positive_file, df_positive):
                             df_positive['End'] == end_pos)]
             accessibility_score = matching_rows['Score'].values[0]
             accessibility_score = math.log(accessibility_score + 1)
-            if g_count_sequence >= g_count_complement:
+            if c_count_sequence >= c_count_complement:
                 seq_data = SequenceData(chrom_parts[0], extracted_sequence, 1, accessibility_score, start_pos,
                                         end_pos)  # Assuming positive classification
                 list_data.append(seq_data)

@@ -78,11 +78,11 @@ def create_test_list(file_path):
 
         if len(extracted_sequence) == 124:
             complement = seq_data.calculate_reverse_complement()
-            g_count_sequence = extracted_sequence.count('C')
-            g_count_complement = complement.count('C')
+            c_count_sequence = extracted_sequence.count('C')
+            c_count_complement = complement.count('C')
 
             # Select the sequence with the most G's
-            chosen_sequence = extracted_sequence if g_count_sequence >= g_count_complement else complement
+            chosen_sequence = extracted_sequence if c_count_sequence >= c_count_complement else complement
             seq_data.sequence = chosen_sequence  # Update the sequence in seq_data
             test_list.append(seq_data)
 

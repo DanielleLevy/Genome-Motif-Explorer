@@ -106,10 +106,10 @@ def createDict(positive_file_train):
         extracted_sequence = sequence[midpoint - cutFromSeq:midpoint + cutFromSeq]
         if (len(extracted_sequence) == seq_lengh):
             complement = calculate_reverse_complement(extracted_sequence)
-            g_count_sequence = sequence.count('C')
-            g_count_complement = complement.count('C')
+            c_count_sequence = sequence.count('C')
+            c_count_complement = complement.count('C')
 
-            if g_count_sequence >= g_count_complement:
+            if c_count_sequence >= c_count_complement:
                    train_dict[extracted_sequence] = 1
             else:
                   train_dict[complement] = 1

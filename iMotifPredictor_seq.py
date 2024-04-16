@@ -118,10 +118,10 @@ def createDictWDLPS():
         extracted_sequence = sequence[midpoint - 62:midpoint + 62]
         if (len(extracted_sequence) == 124):
             complement = calculate_reverse_complement(extracted_sequence)
-            g_count_sequence = sequence.count('C')
-            g_count_complement = complement.count('C')
+            c_count_sequence = sequence.count('C')
+            c_count_complement = complement.count('C')
 
-            if g_count_sequence >= g_count_complement:
+            if c_count_sequence >= c_count_complement:
                 test_dict[extracted_sequence] = 1
             else:
                 test_dict[complement] = 1
@@ -133,10 +133,10 @@ def createDictWDLPS():
         extracted_sequence = sequence[midpoint - 62:midpoint + 62]
         if (len(extracted_sequence) == 124):
             complement = calculate_reverse_complement(extracted_sequence)
-            g_count_sequence = sequence.count('C')
-            g_count_complement = complement.count('C')
+            c_count_sequence = sequence.count('C')
+            c_count_complement = complement.count('C')
 
-            if g_count_sequence >= g_count_complement:
+            if c_count_sequence >= c_count_complement:
                    train_dict[extracted_sequence] = 1
             else:
                   train_dict[complement] = 1
