@@ -140,14 +140,13 @@ def load_sequences_from_csv(csv_path):
 
 
 def main():
-    #file_test = 'pos_txt_files/HEK_iM.txt'
+    file_test = 'txt_permutaion/WDLPS_iM_perm_neg.txt'
     file_train = 'microarray_files/final_table_microarray.csv'
-    sequences_df = pd.read_csv(
-        'interpation_file/mutations.csv')
+    #sequences_df = pd.read_csv('interpation_file/mutations.csv')
     # Create train and test lists using the respective functions
     train_list = create_train_list(file_train)
-    #test_list = create_test_list(file_test)
-    test_list = load_sequences_from_csv('interpation_file/mutations.csv')
+    test_list = create_test_list(file_test)
+    #test_list = load_sequences_from_csv('interpation_file/mutations.csv')
 
     # Shuffle the training data
     random.shuffle(train_list)
@@ -157,8 +156,8 @@ def main():
     y_train = np.array([seq_data.microarray_signal for seq_data in train_list])
 
     # Prepare test data
-    #x_test = [seq_data.extracted_sequence(seq_length) for seq_data in test_list]
-    x_test = test_list
+    x_test = [seq_data.extracted_sequence(seq_length) for seq_data in test_list]
+    #x_test = test_list
     # Create the model
     my_model = model((window_seq, 4), window, st, nt)
 
@@ -174,7 +173,7 @@ def main():
 
     # Then, when preparing data for batch prediction
     for sequence_index, sequence_str in enumerate(x_test):
-        sequence_length = len(sequence_str)  # Now, this should work as expected
+        sequence_length = len(sequence_str)
         for i in range(0, sequence_length - window_seq + 1, window_seq):
             extracted_sequence = sequence_str[i:i + window_seq]
             encoded_sequence = one_hot_encoding(extracted_sequence)
@@ -191,15 +190,14 @@ def main():
         predictions[idx] = max(predictions[idx], prediction)
 
     # Save predictions to CSV
-    #sequences_test = [seq_data.sequence for seq_data in test_list]  # Extract full sequences for saving
+    sequences_test = [seq_data.sequence for seq_data in test_list]  # Extract full sequences for saving
     #print(len(sequences_test), len(predictions))
-    sequences_df['Signal'] = predictions
+    #sequences_df['Signal'] = predictions
     # Save the dataframe with the new predictions to the same CSV file
-    sequences_df.to_csv('mutations.csv',
-                        index=False)  # Replace with your desired file path
+    #sequences_df.to_csv('mutations.csv',index=False)  # Replace with your desired file path
 
     print("Predictions have been added to the CSV file.")
-    #save_signals_to_csv(sequences_test, predictions, 'microarray_files/signals_data_interapt.csv')
+    save_signals_to_csv(sequences_test, predictions, 'microarray_files/signals_data_WDLPS_iM_perm.csv')
 
 main()
 
