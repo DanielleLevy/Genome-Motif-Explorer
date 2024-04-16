@@ -128,8 +128,8 @@ def createlistpos(positive_file, df_microarray):
         extracted_sequence = sequence[midpoint - 62:midpoint + 62]
         if len(extracted_sequence) == 124:
             complement = calculate_reverse_complement(extracted_sequence)
-            g_count_sequence = extracted_sequence.count('G')
-            g_count_complement = complement.count('G')
+            g_count_sequence = extracted_sequence.count('C')
+            g_count_complement = complement.count('C')
             chrom_parts = chromosome.split(':')
             start_pos = int(chrom_parts[1].split('-')[0]) + (midpoint - 62)
             end_pos = int(chrom_parts[1].split('-')[0]) + (midpoint + 62)
@@ -171,8 +171,8 @@ def createlistposWD(positive_file, df_positive):
         extracted_sequence = sequence[midpoint - 62:midpoint + 62]
         if len(extracted_sequence) == 124:
             complement = calculate_reverse_complement(extracted_sequence)
-            g_count_sequence = extracted_sequence.count('G')
-            g_count_complement = complement.count('G')
+            g_count_sequence = extracted_sequence.count('C')
+            g_count_complement = complement.count('C')
             chrom_parts = chromosome.split(':')
             start_pos = int(chrom_parts[1].split('-')[0]) + (midpoint - 62)
             end_pos = int(chrom_parts[1].split('-')[0]) + (midpoint + 62)

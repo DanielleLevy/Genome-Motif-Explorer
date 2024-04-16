@@ -4,8 +4,6 @@ import tensorflow
 from keras.layers import Input, Conv1D, Dense, Activation, GlobalMaxPooling1D
 from keras.models import Model
 from keras.regularizers import l2
-from itertools import permutations
-import re
 import matplotlib.pyplot as plt
 import numpy as np
 # Define the model hyperparameters
@@ -81,10 +79,10 @@ def createDict():
         extracted_sequence = sequence[midpoint - 62:midpoint + 62]
         if (len(extracted_sequence) == 124):
             complement = calculate_reverse_complement(extracted_sequence)
-            g_count_sequence = extracted_sequence.count('G')
-            g_count_complement = complement.count('G')
+            c_count_sequence = extracted_sequence.count('C')
+            c_count_complement = complement.count('C')
 
-            if g_count_sequence >= g_count_complement:
+            if c_count_sequence >= c_count_complement:
                 if  re.search(r'\bchr1\b', chromosome):
                     test_dict[extracted_sequence] = 1
                 else:
@@ -120,8 +118,8 @@ def createDictWDLPS():
         extracted_sequence = sequence[midpoint - 62:midpoint + 62]
         if (len(extracted_sequence) == 124):
             complement = calculate_reverse_complement(extracted_sequence)
-            g_count_sequence = sequence.count('G')
-            g_count_complement = complement.count('G')
+            g_count_sequence = sequence.count('C')
+            g_count_complement = complement.count('C')
 
             if g_count_sequence >= g_count_complement:
                 test_dict[extracted_sequence] = 1

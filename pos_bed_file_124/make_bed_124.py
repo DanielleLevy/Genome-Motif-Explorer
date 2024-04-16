@@ -5,7 +5,7 @@ desired_length = 124
 
 
 # Open the input BED file and the output BED file
-with open('pos_bed_files/HEK_iM.bed', 'r') as infile, open('pos_bed_file_124/Hek_iM_124.bed', 'w') as outfile:
+with open('../pos_bed_files/HEK_iM.bed', 'r') as infile, open('Hek_iM_124.bed', 'w') as outfile:
     for line in infile:
         fields = line.strip().split('\t')
         chrom, start, end = fields[0], int(fields[1]), int(fields[2])

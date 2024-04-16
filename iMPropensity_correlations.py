@@ -1,16 +1,16 @@
 import random
-
 import tensorflow
 from keras.layers import Input, Conv1D, Dense, Activation, GlobalMaxPooling1D
 from keras.models import Model
 from keras.regularizers import l2
 import pandas as pd
 import re
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import pearsonr, spearmanr
 from sklearn.model_selection import train_test_split
 
+import matplotlib.pyplot as plt
+from scipy.stats import pearsonr
 
 # Define the model hyperparameters
 n_filters = 256
@@ -106,8 +106,8 @@ def createDict(positive_file_train):
         extracted_sequence = sequence[midpoint - cutFromSeq:midpoint + cutFromSeq]
         if (len(extracted_sequence) == seq_lengh):
             complement = calculate_reverse_complement(extracted_sequence)
-            g_count_sequence = sequence.count('G')
-            g_count_complement = complement.count('G')
+            g_count_sequence = sequence.count('C')
+            g_count_complement = complement.count('C')
 
             if g_count_sequence >= g_count_complement:
                    train_dict[extracted_sequence] = 1
@@ -311,6 +311,7 @@ def main_genNullSeq():
     print("Pearson Correlation:", pearson_corr)
     print("Spearman Correlation:", spearman_corr)
     return history
+
 def evaluateModel(model, sequences_test, signals_test):
     # Prepare the test data for prediction
     x_test = np.array([one_hot_encoding(seq) for seq in sequences_test])
@@ -327,52 +328,4 @@ def evaluateModel(model, sequences_test, signals_test):
     return y_test, model_predictions
 
 
-def main_micro_test():
-
-    test_file = 'microarray_files/final_table_microarray.csv'
-
-    # Create full data dictionary from the test file
-    full_data_dict = createDataDict(test_file)
-
-    # Split the full data dictionary into training and testing sets
-    sequences_train, sequences_test, signals_train, signals_test = splitData(full_data_dict, test_size=0.1)
-
-
-    # Prepare training data
-    x_train = np.array([one_hot_encoding(seq) for seq in sequences_train])
-    y_train = np.array(signals_train)
-
-    # Create and train the model
-    my_model = model(x_train.shape[1:], window, st, nt)
-    my_model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs)
-
-    # Evaluate the model
-    evaluateModel(my_model, sequences_test, signals_test)
-    import matplotlib.pyplot as plt
-    from scipy.stats import pearsonr
-    # Assuming your model is already trained and you have sequences_test and signals_test
-    y_test, model_predictions = evaluateModel(my_model, sequences_test, signals_test)
-
-    # Now plot the scatter plot of actual vs. predicted signals
-    plt.figure(figsize=(10, 6))
-    plt.scatter(y_test, model_predictions, alpha=0.5)
-    plt.title('Actual vs. Predicted Microarray Signals')
-    plt.xlabel('Actual Signals')
-    plt.ylabel('Predicted Signals')
-
-    # Calculate Pearson correlation for annotation
-    pearson_corr, p_value = pearsonr(y_test, model_predictions)
-    # Annotate Pearson correlation, p-value, and number of points
-    plt.annotate(f'Pearson Correlation: {pearson_corr:.2f}\nP-value: {p_value:.2e}\nNumber of points: {len(y_test)}',
-                 xy=(0.05, 0.95), xycoords='axes fraction',
-                 bbox=dict(boxstyle="round", fc="w"))
-
-
-
-
-    plt.grid(True)
-    plt.show()
-
-
-main_micro_test()
 

@@ -7,7 +7,7 @@ desired_length = 124
 chromosome_lengths = {}
 
 # Read chromosome lengths from a text file
-with open('genome/hg38.chrom.sizes', 'r') as length_file:
+with open('../genome/hg38.chrom.sizes', 'r') as length_file:
     for line in length_file:
         fields = line.strip().split('\t')
         if len(fields) == 2:

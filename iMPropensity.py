@@ -78,8 +78,8 @@ def create_test_list(file_path):
 
         if len(extracted_sequence) == 124:
             complement = seq_data.calculate_reverse_complement()
-            g_count_sequence = extracted_sequence.count('G')
-            g_count_complement = complement.count('G')
+            g_count_sequence = extracted_sequence.count('C')
+            g_count_complement = complement.count('C')
 
             # Select the sequence with the most G's
             chosen_sequence = extracted_sequence if g_count_sequence >= g_count_complement else complement
@@ -127,19 +127,27 @@ def model(shape, window, st, nt):
     return mdl
 
 def one_hot_encoding(sequence):
-    mapping = {'A': [1, 0, 0, 0], 'C': [0, 1, 0, 0], 'G': [0, 0, 1, 0], 'T': [0, 0, 0, 1],  'N': [0, 0, 0, 0]}
+    mapping = {'A': [1, 0, 0, 0], 'C': [0, 1, 0, 0], 'G': [0, 0, 1, 0], 'T': [0, 0, 0, 1],  'N': [0.25, 0.25, 0.25, 0.25]}
     encoded_sequence = [mapping.get(base, [0, 0, 0, 0]) for base in sequence]
     return np.array(encoded_sequence)
+
+def load_sequences_from_csv(csv_path):
+    """Load sequences from the provided CSV file and create SequenceData objects."""
+    data = pd.read_csv(csv_path)
+    sequences = data['Mutated_Sequence'].tolist()
+    return [SequenceData(chromosome=None, sequence=seq) for seq in sequences]  # Simplified object creation
 
 
 
 def main():
-    file_test = 'pos_txt_files/HEK_iM.txt'
+    #file_test = 'pos_txt_files/HEK_iM.txt'
     file_train = 'microarray_files/final_table_microarray.csv'
-
+    sequences_df = pd.read_csv(
+        'interpation_file/mutations.csv')
     # Create train and test lists using the respective functions
     train_list = create_train_list(file_train)
-    test_list = create_test_list(file_test)
+    #test_list = create_test_list(file_test)
+    test_list = load_sequences_from_csv('interpation_file/mutations.csv')
 
     # Shuffle the training data
     random.shuffle(train_list)
@@ -149,8 +157,8 @@ def main():
     y_train = np.array([seq_data.microarray_signal for seq_data in train_list])
 
     # Prepare test data
-    x_test = [seq_data.extracted_sequence(seq_length) for seq_data in test_list]
-
+    #x_test = [seq_data.extracted_sequence(seq_length) for seq_data in test_list]
+    x_test = test_list
     # Create the model
     my_model = model((window_seq, 4), window, st, nt)
 
@@ -161,10 +169,14 @@ def main():
     all_encoded_windows = []
     sequence_index_map = []  # Maps each window to its original sequence index
 
-    # Encode all sub-windows and keep track of their original sequence
-    for sequence_index, sequence in enumerate(x_test):
-        for i in range(0, len(sequence) - window_seq + 1, window_seq):
-            extracted_sequence = sequence[i:i + window_seq]
+    # Before starting the loop, ensure x_test is a list of SequenceData objects
+    x_test = [seq_data.sequence for seq_data in test_list]  # This will extract the sequence strings
+
+    # Then, when preparing data for batch prediction
+    for sequence_index, sequence_str in enumerate(x_test):
+        sequence_length = len(sequence_str)  # Now, this should work as expected
+        for i in range(0, sequence_length - window_seq + 1, window_seq):
+            extracted_sequence = sequence_str[i:i + window_seq]
             encoded_sequence = one_hot_encoding(extracted_sequence)
             all_encoded_windows.append(encoded_sequence)
             sequence_index_map.append(sequence_index)
@@ -179,8 +191,15 @@ def main():
         predictions[idx] = max(predictions[idx], prediction)
 
     # Save predictions to CSV
-    sequences_test = [seq_data.sequence for seq_data in test_list]  # Extract full sequences for saving
-    save_signals_to_csv(sequences_test, predictions, 'microarray_files/signals_data_HEK_iM.csv')
+    #sequences_test = [seq_data.sequence for seq_data in test_list]  # Extract full sequences for saving
+    #print(len(sequences_test), len(predictions))
+    sequences_df['Signal'] = predictions
+    # Save the dataframe with the new predictions to the same CSV file
+    sequences_df.to_csv('mutations.csv',
+                        index=False)  # Replace with your desired file path
+
+    print("Predictions have been added to the CSV file.")
+    #save_signals_to_csv(sequences_test, predictions, 'microarray_files/signals_data_interapt.csv')
 
 main()
 
