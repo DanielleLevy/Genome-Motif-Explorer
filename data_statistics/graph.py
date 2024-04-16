@@ -31,6 +31,7 @@ def plot_roc_curves(files_and_models):
             ax.set_ylabel('True Positive Rate')
         ax.legend(loc="lower right")
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig(f'AUROC.png')
     plt.show()
 
 
@@ -76,20 +77,20 @@ if __name__ == "__main__":
     # Define your file names and models here
     files_and_models = {
         'random': [
-            ('predictions_and_true_labels_seq_random.csv', 'Sequence only'),
-            ('predictions_and_true_labels_acc_random.csv', 'Sequence + ATAC'),
-            ('predictions_and_true_labels_micro_rand.csv', 'Sequence + microarray signals'),
-            ('predictions_and_true_labels_acc_mic_ran.csv', 'Sequence + microarray signals + ATAC')
+            ('../AUROC/predictions_and_true_labels_seq_random.csv', 'Sequence only'),
+            ('../AUROC/predictions_and_true_labels_acc_random.csv', 'Sequence + ATAC'),
+            ('../AUROC/predictions_and_true_labels_micro_rand.csv', 'Sequence + microarray signals'),
+            ('../AUROC/predictions_and_true_labels_acc_mic_ran.csv', 'Sequence + microarray signals + ATAC')
         ],
         'permutation': [
-            ('predictions_and_true_labels_seq_perm.csv', 'Sequence only'),
-            ('predictions_and_true_labels_micro_perm.csv', 'Sequence + microarray signals')
+            ('../AUROC/predictions_and_true_labels_seq_perm.csv', 'Sequence only'),
+            ('../AUROC/predictions_and_true_labels_micro_perm.csv', 'Sequence + microarray signals')
         ],
         'genNullSeq': [
-            ('predictions_and_true_labels_seq_gen.csv', 'Sequence only'),
-            ('predictions_and_true_labels_acc_gen.csv', 'Sequence + ATAC'),
-            ('predictions_and_true_labels_micro_gen.csv', 'Sequence + microarray signals'),
-            ('predictions_and_true_labels_acc_mic_gen.csv', 'Sequence + microarray signals + ATAC')
+            ('../AUROC/predictions_and_true_labels_seq_gen.csv', 'Sequence only'),
+            ('../AUROC/predictions_and_true_labels_acc_gen.csv', 'Sequence + ATAC'),
+            ('../AUROC/predictions_and_true_labels_micro_gen.csv', 'Sequence + microarray signals'),
+            ('../AUROC/predictions_and_true_labels_acc_mic_gen.csv', 'Sequence + microarray signals + ATAC')
         ]
     }
     plot_roc_curves(files_and_models)
