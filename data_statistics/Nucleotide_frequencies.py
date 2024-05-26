@@ -103,12 +103,12 @@ ax.set_yticks(y_positions)
 ax.set_yticklabels((subcategories * 2), fontsize=10)  # Repeat labels appropriately
 
 # Position the group labels between the 3rd and 2nd bars from the top within each group
-ax.text(1.15, 1.5, 'HEK', ha='right', va='center', fontsize=12, fontweight='bold', color='black', transform=ax.transData)
-ax.text(1.18, 6.5, 'WDLPS', ha='right', va='center', fontsize=12, fontweight='bold', color='black', transform=ax.transData)
+ax.text(1.15, 1.5, 'HEK', ha='right', va='center', fontsize=12, color='black', transform=ax.transData)
+ax.text(1.18, 6.5, 'WDLPS', ha='right', va='center', fontsize=12, color='black', transform=ax.transData)
 
 # Set labels for axes
-ax.set_xlabel('Nucleotide frequency', fontsize=12, fontweight='bold')
-ax.set_ylabel('Dataset', fontsize=12, fontweight='bold')
+ax.set_xlabel('Nucleotide frequency', fontsize=12)
+ax.set_ylabel('Dataset', fontsize=12)
 
 # Create and place the legend outside the plot area
 legend_elements = [plt.Rectangle((0, 0), 1, 1, color=color) for color in colors]

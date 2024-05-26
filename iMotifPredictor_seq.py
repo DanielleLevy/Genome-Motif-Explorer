@@ -1,11 +1,13 @@
 import random
-
+import re
 import tensorflow
 from keras.layers import Input, Conv1D, Dense, Activation, GlobalMaxPooling1D
 from keras.models import Model
 from keras.regularizers import l2
 import matplotlib.pyplot as plt
 import numpy as np
+import logomaker
+import pandas as pd
 # Define the model hyperparameters
 n_filters = 256
 kernel_size = 12
@@ -17,6 +19,7 @@ window = random.randint(5, 20)  # Adjust the range as needed
 st = random.randint(1, 10)  # Adjust the range as needed
 nt = random.randint(1, 10)  # Adjust the range as needed
 seq_lengh = 124
+
 def model(shape, window, st, nt):
     # Creating Input Layer
     in1 = Input(shape=shape)
@@ -54,7 +57,6 @@ def calculate_reverse_complement(sequence):
     reversed_sequence = sequence[::-1]  # Reverse the sequence
     reverse_complement = [complement_dict[base] for base in reversed_sequence]
     return ''.join(reverse_complement)
-# with chromosom1 test
 
 def createDict():
     # Define a regular expression pattern to match sequences with 124 bases centered at position 124
@@ -93,7 +95,6 @@ def createDict():
                 else:
                     train_dict[complement] = 1
     return test_dict, train_dict
-# with WDLPS test
 
 def createDictWDLPS():
     # Define a regular expression pattern to match sequences with 124 bases centered at position 124
@@ -165,7 +166,6 @@ def add_negatives_to_dict(test_dict, train_dict,negative_file):
 
 
 
-import re
 
 def add_negatives_to_dict_gen(test_dict, train_dict, negative_file):
     with open(negative_file, 'r') as file:
@@ -202,7 +202,7 @@ def add_negatives_to_dict_WDLPS(dic, negative_file):
         extracted_sequence = sequence[midpoint - 62:midpoint + 62]
         if (len(extracted_sequence) == 124):
             sequence = sequence.upper()
-            dic[sequence] = 0
+            dic[extracted_sequence] = 0
 
     return dic
 def plot_metrics(history1, history2, history3, title1, title2, title3):
@@ -225,15 +225,77 @@ def plot_metrics(history1, history2, history3, title1, title2, title3):
     plt.suptitle(f"{title1} vs {title2} vs {title3}")
     plt.tight_layout()
     plt.show()
+# Integrated Gradients functions
+def integrated_gradients(inputs, model, target_class_idx, baseline=None, steps=50):
+    if baseline is None:
+        baseline = np.zeros(inputs.shape)
+    else:
+        baseline = baseline
+
+    interpolated_inputs = [
+        baseline + (float(i) / steps) * (inputs - baseline) for i in range(steps + 1)
+    ]
+
+    interpolated_inputs = [tensorflow.convert_to_tensor(input, dtype=tensorflow.float32) for input in interpolated_inputs]
+
+    grads = []
+    for input in interpolated_inputs:
+        with tensorflow.GradientTape() as tape:
+            tape.watch(input)
+            preds = model(tensorflow.expand_dims(input, axis=0))  # Add batch dimension
+            target_class = preds[:, target_class_idx]
+
+        grads.append(tape.gradient(target_class, input))
+
+    avg_grads = np.mean(grads, axis=0)
+    integrated_grads = (inputs - baseline) * avg_grads
+    return integrated_grads
+
+def plot_integrated_gradients_logomaker(attributions, sequence):
+    # Prepare the data for logomaker
+    data = pd.DataFrame(attributions, columns=['A', 'C', 'G', 'T'])
+
+    # Create the logo plot
+    fig, ax = plt.subplots(figsize=(15, 5))
+    crp_logo = logomaker.Logo(data, ax=ax, shade_below=0.5, fade_below=0.5, font_name='Arial Rounded MT Bold')
+
+    # Style the logo plot
+    crp_logo.style_spines(spines=['left', 'bottom'], visible=True)
+    crp_logo.ax.set_ylabel("Attribution score", labelpad=-1, fontsize=14)
+    crp_logo.ax.set_xticks([])
+    crp_logo.ax.axhline(0, color='black', linewidth=0.5)
+    plt.title('Integrated Gradients for Sequence')
+    plt.show()
+
+def one_hot_encode(sequence):
+    mapping = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+    one_hot = np.zeros((len(sequence), 4))
+    for i, nucleotide in enumerate(sequence):
+        one_hot[i, mapping[nucleotide]] = 1
+    return one_hot
+
+def integrated_gradients_example(my_model):
+    sequence = "CAGGGCGCCCCCTGCTGGCGACTAGGGCAACTGCAGGGCTCTCTTGCTTAGAGTGGTGGCCAGCGCCCCCTGCTGGCGCCGGGGCACTGCAGGGCCCTCTTGCTTACTGTATAGTGGTGGCACG"  # Replace with your actual sequence
+    one_hot_sequence = one_hot_encode(sequence)
+    target_class_idx = 0  # Change as per your target class
+
+    # Calculate integrated gradients
+    attributions = integrated_gradients(one_hot_sequence, my_model, target_class_idx)
+
+    # Visualize the integrated gradients
+    plot_integrated_gradients_logomaker(attributions, sequence)
+
+#####################################################################
 positive_file= 'pos_txt_files/HEK_iM.txt'
-positive_file_train= 'pos_txt_files/HEK_G4.txt'
-positive_file_test= 'pos_txt_files/WDLPS_G4.txt'
+positive_file_train= 'pos_txt_files/HEK_iM.txt'
+positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
 
 #main with permutaions
 def main_permutions():
     negative_file = 'txt_permutaion/HEK_iM_perm_neg.txt'
-    negative_file_train = 'txt_permutaion/HEK_iM_perm_neg.txt'
-    negative_file_test = 'txt_permutaion/WDLPS_G4_perm_neg.txt'
+    #negative_file_train = 'txt_permutaion/HEK_iM_perm_neg.txt'
+    #negative_file_test = 'txt_permutaion/WDLPS_iM_perm_neg.txt'
+    #test_dict,train_dict = createDictWDLPS()
     test_dict, train_dict = createDict()
     test_dict, train_dict = add_negatives_to_dict(test_dict,train_dict,negative_file)
     #test_dict = add_negatives_to_dict_WDLPS(test_dict, negative_file_test)
@@ -265,14 +327,13 @@ def main_permutions():
 
     # Fit the model on your data
     history = my_model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
+    # Integrated gradients visualization for the test sequence
+    integrated_gradients_example(my_model)
 
     # Evaluate the model
     test_scores = my_model.evaluate(x_test, y_test)
     # First, get the predictions
     predictions = my_model.predict(x_test)
-
-    # Then, you can create a DataFrame and save it as before
-    import pandas as pd
 
     # Assuming y_test are your true labels
     df = pd.DataFrame({
@@ -281,7 +342,7 @@ def main_permutions():
     })
 
     # Save the DataFrame to a CSV file
-    csv_file_path = 'AUROC/predictions_and_true_labels_seq_perm.csv'
+    csv_file_path = 'AUROC/predictions_and_true_labels_seq_perm_WDLPS.csv'
     df.to_csv(csv_file_path, index=False)
     print("Test loss:", test_scores[0])
     print("Test Accuracy:", test_scores[1])
@@ -289,16 +350,19 @@ def main_permutions():
     #plot_metric(history, title="Permutations Method")
     return history
 
+
 #main with rangom genertive
 def main_random():
     negative_file= 'random_neg/HEK_iM_neg.txt'
     positive_file_train= 'pos_txt_files/HEK_iM.txt'
-    negative_file_train= 'random_neg/HEK_iM_neg.txt'
-    positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
-    negative_file_test= 'random_neg/WDLPS_iM_neg.txt'
+    #negative_file_train= 'random_neg/HEK_iM_neg.txt'
+    #positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
+    #negative_file_test= 'random_neg/WDLPS_iM_neg.txt'
+    #test_dict, train_dict = createDictWDLPS()
     test_dict, train_dict = createDict()
-    #test_dict,train_dict = createDict_neg_WDLPS(test_dict,train_dict)
-    test_dict,train_dict = add_negatives_to_dict(test_dict,train_dict,negative_file)
+    test_dict, train_dict = add_negatives_to_dict(test_dict,train_dict,negative_file)
+    #test_dict = add_negatives_to_dict_WDLPS(test_dict, negative_file_test)
+    #train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
     items_train = list(train_dict.items())
     random.shuffle(items_train)
     shuffled_dict_train = dict(items_train)
@@ -325,15 +389,11 @@ def main_random():
 
     # Fit the model on your data
     history = my_model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
+    integrated_gradients_example(my_model)
 
     # Evaluate the model
     test_scores = my_model.evaluate(x_test, y_test)
-    my_model.save("model_random.keras")
-    # First, get the predictions
     predictions = my_model.predict(x_test)
-
-    # Then, you can create a DataFrame and save it as before
-    import pandas as pd
 
     # Assuming y_test are your true labels
     df = pd.DataFrame({
@@ -342,7 +402,7 @@ def main_random():
     })
 
     # Save the DataFrame to a CSV file
-    csv_file_path = 'AUROC/predictions_and_true_labels_seq_random.csv'
+    csv_file_path = 'AUROC/predictions_and_true_labels_seq_random_WDLPS.csv'
     df.to_csv(csv_file_path, index=False)
 
     print(f"Predictions and true labels have been saved to {csv_file_path}.")
@@ -352,16 +412,17 @@ def main_random():
     #plot_metric(history, title="Random Method")
     return history
 
-#main with rangom genertive
 def main_genNullSeq():
     negative_file= 'genNellSeq/negHekiM.txt'
-    positive_file_train= 'pos_txt_files/HEK_iM.txt'
-    negative_file_train= 'random_neg/HEK_iM_neg.txt'
-    positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
-    negative_file_test= 'random_neg/WDLPS_iM_neg.txt'
+    #positive_file_train= 'pos_txt_files/HEK_iM.txt'
+    #negative_file_train= 'genNellSeq/negHekiM.txt'
+    #positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
+    #negative_file_test= 'genNellSeq/negWDLPSiM.txt'
     test_dict, train_dict = createDict()
-    #test_dict,train_dict = createDict_neg_WDLPS(test_dict,train_dict)
-    test_dict,train_dict= add_negatives_to_dict(test_dict,train_dict,negative_file)
+    #test_dict,train_dict = createDictWDLPS()
+    #test_dict = add_negatives_to_dict_WDLPS(test_dict, negative_file_test)
+    #train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
+    #test_dict,train_dict= add_negatives_to_dict(test_dict,train_dict,negative_file)
     items_train = list(train_dict.items())
     random.shuffle(items_train)
     shuffled_dict_train = dict(items_train)
@@ -383,11 +444,10 @@ def main_genNullSeq():
     # Create the model
     my_model = model(x_train.shape[1:], window, st, nt)
 
-    # Compile the model
-    # my_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy', 'mae'])
-
     # Fit the model on your data
     history = my_model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_data=(x_test, y_test))
+    integrated_gradients_example(my_model)
+
     # Evaluate the model
     test_scores = my_model.evaluate(x_test, y_test)
     # First, get the predictions
@@ -403,16 +463,16 @@ def main_genNullSeq():
     })
 
     # Save the DataFrame to a CSV file
-    csv_file_path = 'AUROC/predictions_and_true_labels_seq_gen.csv'
+    csv_file_path = 'AUROC/predictions_and_true_labels_seq_gen_WDLPS.csv'
     df.to_csv(csv_file_path, index=False)
     print("Test loss:", test_scores[0])
     print("Test Accuracy:", test_scores[1])
     print("Test AUC:", test_scores[2])
 
-    #plot_metric(history, title="Random Method")
     return history
-#history_permutations = main_permutions()
+
+history_permutations = main_permutions()
 history_random = main_random()
-#history_genNull = main_genNullSeq()
+history_genNull = main_genNullSeq()
 
 #plot_metrics(history_permutations, history_random,history_genNull, "Permutations Method", "Random Method","genNullSeq Method")

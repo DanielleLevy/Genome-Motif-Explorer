@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Original sequence (example sequence here, replace with your actual sequence)
-original_sequence = "ctaaccctaaccctaaccctaaccctaaccctaaccctaaccctaaccctaaccctaaccctaaccctaaccctaaccctaaccctaaccctaaccctaacccaaccctaaccctaaccctaaccctaaccctaaccctaacccctaaccctaaccctaaccctaaccctaacctaaccctaaccctaaccctaaccctaaccctaaccctaaccctaaccctaacccctaaccctaaccctaaaccctaaaccctaaccctaaccctaaccctaaccctaaccccaaccccaaccccaaccccaaccccaaccccaaccctaacccctaaccctaaccctaaccctaccctaaccctaaccctaaccctaaccctaaccctaacccctaacccctaaccctaaccctaaccctaaccctaaccctaaccctaacccctaaccctaaccctaaccctaaccctcgcggtaccctcagccggcccgcccgcccgggtctgacctgaggagaactgtgctccgccttcagagtaccaccgaaatctgtgcagaggacaacgcagctccgccctcgcggtgctctccgggtctgtgctgaggagaacgcaactccgcc"
+original_sequence = "aaaagccgggatcgaccgccccttgcttgcagccgggcactacaggacccgcttgctcacggtgctgtgccagggcgccccctgctggcgactagggcaactgcagggctctcttgcttagagtggtggccagcgccccctgctggcgccggggcactgcagggccctcttgcttactgtatagtggtggcacgccgcctgctggcagctagggacattgcagggtcctcttgctcaaggtgtagtggcagcacgcccacctgct"
 # Possible nucleotides
 nucleotides = ['A', 'C', 'G', 'T']
 
@@ -26,4 +26,4 @@ mutations = generate_mutations(extracted_sequence)
 df = pd.DataFrame(mutations, columns=['Position', 'Original_Nucleotide', 'Mutated_Nucleotide', 'Mutated_Sequence'])
 df.to_csv('mutations.csv', index=False)
 
-print("Mutations generated and saved to mutations.csv.")
+print("Mutations generated and saved to utations.csv.")

@@ -123,7 +123,7 @@ def createlistpos(positive_file, df_positive, df_microarray):
     matches = re.findall(pattern, data)
 
     # Extract the microarray signals
-    microarray_signals = df_microarray['Signal'].tolist()
+    microarray_signals = df_microarray['Average Prediction'].tolist()
 
     for i, match in enumerate(matches):
         chromosome, sequence = match
@@ -158,7 +158,7 @@ def createlistpos(positive_file, df_positive, df_microarray):
     return test_data, train_data
 
 
-def createlistposWD(positive_file, df_positive):
+def createlistposWD(positive_file, df_positive, df_microarray):
     # Define a regular expression pattern to match sequences with 124 bases centered at position 124
     pattern = r'>(chr\d+:\d+-\d+)\n([ACGTacgt]+)'
 
@@ -170,8 +170,8 @@ def createlistposWD(positive_file, df_positive):
 
     # Use re.findall to extract all positive sequences
     matches = re.findall(pattern, data)
-
-    for match in matches:
+    microarray_signals = df_microarray['Average Prediction'].tolist()
+    for i, match in enumerate(matches):
         chromosome, sequence = match
         sequence = sequence.upper()
         midpoint = len(sequence) // 2
@@ -184,6 +184,7 @@ def createlistposWD(positive_file, df_positive):
             chrom_parts = chromosome.split(':')
             start_pos = int(chrom_parts[1].split('-')[0]) + (midpoint - 62)
             end_pos = int(chrom_parts[1].split('-')[0]) + (midpoint + 62)
+            microarray_signal = microarray_signals[i] if i < len(microarray_signals) else None
             matching_rows = df_positive[
                 (df_positive['Chromosome'] == chrom_parts[0]) & (df_positive['Start'] == start_pos) & (
                             df_positive['End'] == end_pos)]
@@ -191,11 +192,11 @@ def createlistposWD(positive_file, df_positive):
             accessibility_score = math.log(accessibility_score + 1)
             if c_count_sequence >= c_count_complement:
                 seq_data = SequenceData(chrom_parts[0], extracted_sequence, 1, accessibility_score, start_pos,
-                                        end_pos)  # Assuming positive classification
+                                        end_pos,microarray_signal)  # Assuming positive classification
                 list_data.append(seq_data)
             else:
                 complement_seq_data = SequenceData(chrom_parts[0], complement, 1, accessibility_score, start_pos,
-                                                   end_pos)
+                                                   end_pos,microarray_signal)
                 list_data.append(complement_seq_data)
 
     return list_data
@@ -207,7 +208,7 @@ def add_negatives_to_list(test_dict, train_dict, negative_file, df_negative, df_
     matches = re.findall(pattern, data)
 
     # Extract the microarray signals
-    microarray_signals = df_microarray_negative['Signal'].tolist()
+    microarray_signals = df_microarray_negative['Average Prediction'].tolist()
 
     for i, match in enumerate(matches):
         chromosome, sequence = match
@@ -239,13 +240,14 @@ def add_negatives_to_list(test_dict, train_dict, negative_file, df_negative, df_
 
 
 
-def add_negatives_to_listWD(listpos, negative_file, df_negative):
+def add_negatives_to_listWD(listpos, negative_file, df_negative,df_microarray_negative):
     with open(negative_file, 'r') as file:
         data = file.read()
     # Define a regular expression pattern to match sequences with 124 bases centered at position 124
     pattern = r'>(chr\d+:\d+-\d+)\n([ACGTacgt]+)'
     matches = re.findall(pattern, data)
-    for match in matches:
+    microarray_signals = df_microarray_negative['Average Prediction'].tolist()
+    for i, match in enumerate(matches):
         chromosome, sequence = match
         sequence = sequence.upper()
         midpoint = len(sequence) // 2
@@ -255,6 +257,8 @@ def add_negatives_to_listWD(listpos, negative_file, df_negative):
             chrom_parts = chromosome.split(':')
             start_pos = int(chrom_parts[1].split('-')[0]) + (midpoint - 62)
             end_pos = int(chrom_parts[1].split('-')[0]) + (midpoint + 62)
+            microarray_signal = microarray_signals[i] if i < len(microarray_signals) else None
+
             matching_rows = df_negative[
                 (df_negative['Chromosome'] == chrom_parts[0]) & (df_negative['Start'] == start_pos) & (
                             df_negative['End'] == end_pos)]
@@ -265,7 +269,7 @@ def add_negatives_to_listWD(listpos, negative_file, df_negative):
             else:
                 accessibility_score = None
             # Add the negative sequence to the appropriate dictionary with label 0
-            listpos.append(SequenceData(chrom_parts[0], extracted_sequence, 0, accessibility_score, start_pos, end_pos))
+            listpos.append(SequenceData(chrom_parts[0], extracted_sequence, 0, accessibility_score, start_pos, end_pos,microarray_signal))
 
     return listpos
 
@@ -275,7 +279,7 @@ def main_random_access():
     negative_file = 'random_neg\HEK_iM_neg.txt'
     df_positive = pd.read_csv('atac_files\HEK_iM_SCORES', sep=',', header=0, names=columns)
     df_negative = pd.read_csv('atac_files\HEK_iM_neg_SCORES', sep=',', header=0, names=columns)
-    df_microarray_negative = pd.read_csv('microarray_files\signals_data_HEK_iM_random.csv')
+    df_microarray_negative = pd.read_csv('microarray_files\signals_data_HEK_iM_neg.csv')
     # Create the lists to store SequenceData objects
     test_data, train_data = createlistpos(positive_file, df_positive,df_microarray)
 
@@ -333,7 +337,9 @@ def main_random_access():
     # Assuming y_test are your true labels
     df = pd.DataFrame({
         'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
-        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+        'Predictions': predictions.flatten(),# Adjust if predictions are not in the format you expect
+        'microarray_signal': x_test_microarray.flatten(),
+        'atac_accessibility': x_test_accessibility.flatten()
     })
 
     # Save the DataFrame to a CSV file
@@ -348,22 +354,26 @@ def main_random_access():
 
 
 def main_random_access_WD():
-    positive_file_train = 'pos_txt_files/WDLPS_iM.txt'
-    negative_file_train = 'random_negWDLPS_iM_neg.txt'
+    positive_file_train = 'pos_txt_files/HEK_iM.txt'
+    negative_file_train = 'random_neg/HEK_iM_neg.txt'
     positive_file_test = 'pos_txt_files/WDLPS_iM.txt'
     negative_file_test = 'random_neg/WDLPS_iM_neg.txt'
+    df_microarray_train = pd.read_csv('microarray_files/signals_data_HEK_iM.csv')
+    df_microarray_train_neg = pd.read_csv('microarray_files/signals_data_HEK_iM_neg.csv')
+    df_microarray_test = pd.read_csv('microarray_files/signals_data_WDLPS_iM.csv')
+    df_microarray_test_neg = pd.read_csv('microarray_files/signals_data_WDLPS_iM_neg.csv')
     df_positive_test = pd.read_csv('atac_files/WDLPS_iM_SCORES', sep=',', header=0, names=columns)
     df_negative_test = pd.read_csv('atac_files/WDLPS_iM_neg_SCORES', sep=',', header=0, names=columns)
-    df_positive_train = pd.read_csv('atac_files/ WDLPS_iM_SCORES', sep=',', header=0, names=columns)
-    df_negative_train = pd.read_csv('atac_files/ WDLPS_iM_neg_SCORES', sep=',', header=0, names=columns)
+    df_positive_train = pd.read_csv('atac_files/HEK_iM_SCORES', sep=',', header=0, names=columns)
+    df_negative_train = pd.read_csv('atac_files/HEK_iM_neg_SCORES', sep=',', header=0, names=columns)
 
     # Create the lists to store SequenceData objects
-    test_data = createlistposWD(positive_file_test, df_positive_test)
-    train_data = createlistposWD(positive_file_train, df_positive_train)
+    test_data = createlistposWD(positive_file_test, df_positive_test, df_microarray_test)
+    train_data = createlistposWD(positive_file_train, df_positive_train, df_microarray_train)
 
     # Add negative sequences to the appropriate lists
-    test_data = add_negatives_to_listWD(test_data, negative_file_test, df_negative_test)
-    train_data = add_negatives_to_listWD(train_data, negative_file_train, df_negative_train)
+    test_data = add_negatives_to_listWD(test_data, negative_file_test, df_negative_test, df_microarray_test_neg)
+    train_data = add_negatives_to_listWD(train_data, negative_file_train, df_negative_train, df_microarray_train_neg)
 
     # Shuffle the data
     random.shuffle(train_data)
@@ -372,10 +382,8 @@ def main_random_access_WD():
     # Extract sequences, classifications, and microarray signals from SequenceData objects
     sequences_train = [seq.sequence for seq in train_data]
     classifications_train = [seq.classification for seq in train_data]
-    x_train_microarray = np.array([seq.microarray_signal for seq in train_data]).reshape(-1, 1)
     sequences_test = [seq.sequence for seq in test_data]
     classifications_test = [seq.classification for seq in test_data]
-    x_test_microarray = np.array([seq.microarray_signal for seq in test_data]).reshape(-1, 1)
 
     # Convert the sequences to numerical input data (X) with padding
     x_train = np.array([one_hot_encoding(seq) for seq in sequences_train])
@@ -386,16 +394,35 @@ def main_random_access_WD():
     # Extract accessibility scores from SequenceData objects
     x_train_accessibility = np.array([seq.accessibility for seq in train_data]).reshape(-1, 1)
     x_test_accessibility = np.array([seq.accessibility for seq in test_data]).reshape(-1, 1)
+    x_train_microarray = np.array([float(seq.microarray_signal) if seq.microarray_signal is not None else 0.0
+                                  for seq in train_data]).reshape(-1, 1)
+    x_test_microarray = np.array([float(seq.microarray_signal) if seq.microarray_signal is not None else 0.0
+                                  for seq in test_data]).reshape(-1, 1)
+
 
     # Create the model
     my_model = model(x_train.shape[1:], window, st, nt)
 
     # Fit the model on your data (including accessibility, classifications, and microarray signals)
-    history = my_model.fit([x_train, x_train_accessibility, x_train_microarray], y_train, batch_size=batch_size, epochs=epochs, validation_data=([x_test, x_test_accessibility, x_test_microarray], y_test))
+    history = my_model.fit([x_train, x_train_accessibility, x_train_microarray], y_train, batch_size=batch_size, epochs=epochs)
 
     # Evaluate the model
     test_scores = my_model.evaluate([x_test, x_test_accessibility, x_test_microarray], y_test)
 
+    # First, get the predictions
+    predictions = my_model.predict([x_test, x_test_accessibility, x_test_microarray])
+
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten(),
+        'microarray_signal': x_test_microarray.flatten(),
+        'atac_accessibility': x_test_accessibility.flatten()
+    })
+
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_acc_mic_ran_WDLPS.csv'
+    df.to_csv(csv_file_path, index=False)
 
     # Save results and print evaluation metrics
     print("Test loss:", test_scores[0])
@@ -407,15 +434,26 @@ def main_random_access_WD():
 
 
 def main_genNullSeq_access_WDLPS():
-    positive_file = 'pos_txt_file/WDLPS_iM.txt'
-    negative_file = 'genNellSeq/negWDLPSiM.txt'
-    df_positive = pd.read_csv('atac_files/WDLPS_iM_SCORES', sep=',', header=0, names=columns)
-    df_negative = pd.read_csv('atac_files/negWDLPSiM_SCORES', sep=',', header=0, names=columns)
+    positive_file_train = 'pos_txt_files/HEK_iM.txt'
+    negative_file_train = 'genNellSeq/negHekiM.txt'
+    positive_file_test = 'pos_txt_files/WDLPS_iM.txt'
+    negative_file_test = 'genNellSeq/negWDLPSiM.txt'
+    df_microarray_train = pd.read_csv('microarray_files/signals_data_HEK_iM.csv')
+    df_microarray_train_neg = pd.read_csv('microarray_files/signals_data_negHekiM.csv')
+    df_microarray_test = pd.read_csv('microarray_files/signals_data_WDLPS_iM.csv')
+    df_microarray_test_neg = pd.read_csv('microarray_files/signals_data_negWDLPSiM.csv')
+    df_positive_test = pd.read_csv('atac_files/WDLPS_iM_SCORES', sep=',', header=0, names=columns)
+    df_negative_test = pd.read_csv('atac_files/negWDLPSiM_SCORES', sep=',', header=0, names=columns)
+    df_positive_train = pd.read_csv('atac_files/HEK_iM_SCORES', sep=',', header=0, names=columns)
+    df_negative_train = pd.read_csv('atac_files/negHekiM_SCORES', sep=',', header=0, names=columns)
+
     # Create the lists to store SequenceData objects
-    test_data, train_data = createlistpos(positive_file, df_positive)
+    test_data = createlistposWD(positive_file_test, df_positive_test, df_microarray_test)
+    train_data = createlistposWD(positive_file_train, df_positive_train, df_microarray_train)
 
     # Add negative sequences to the appropriate lists
-    test_data, train_data = add_negatives_to_list(test_data, train_data, negative_file, df_negative)
+    test_data = add_negatives_to_listWD(test_data, negative_file_test, df_negative_test, df_microarray_test_neg)
+    train_data = add_negatives_to_listWD(train_data, negative_file_train, df_negative_train, df_microarray_train_neg)
 
     # Shuffle the data
     random.shuffle(train_data)
@@ -424,10 +462,8 @@ def main_genNullSeq_access_WDLPS():
     # Extract sequences, classifications, and microarray signals from SequenceData objects
     sequences_train = [seq.sequence for seq in train_data]
     classifications_train = [seq.classification for seq in train_data]
-    x_train_microarray = np.array([seq.microarray_signal for seq in train_data]).reshape(-1, 1)
     sequences_test = [seq.sequence for seq in test_data]
     classifications_test = [seq.classification for seq in test_data]
-    x_test_microarray = np.array([seq.microarray_signal for seq in test_data]).reshape(-1, 1)
 
     # Convert the sequences to numerical input data (X) with padding
     x_train = np.array([one_hot_encoding(seq) for seq in sequences_train])
@@ -438,6 +474,10 @@ def main_genNullSeq_access_WDLPS():
     # Extract accessibility scores from SequenceData objects
     x_train_accessibility = np.array([seq.accessibility for seq in train_data]).reshape(-1, 1)
     x_test_accessibility = np.array([seq.accessibility for seq in test_data]).reshape(-1, 1)
+    x_train_microarray = np.array([float(seq.microarray_signal) if seq.microarray_signal is not None else 0.0
+                                   for seq in train_data]).reshape(-1, 1)
+    x_test_microarray = np.array([float(seq.microarray_signal) if seq.microarray_signal is not None else 0.0
+                                  for seq in test_data]).reshape(-1, 1)
 
     # Create the model
     my_model = model(x_train.shape[1:], window, st, nt)
@@ -447,10 +487,23 @@ def main_genNullSeq_access_WDLPS():
 
     # Evaluate the model
     test_scores = my_model.evaluate([x_test, x_test_accessibility, x_test_microarray], y_test)
+
+    # First, get the predictions
     predictions = my_model.predict([x_test, x_test_accessibility, x_test_microarray])
 
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten(),  # Adjust if predictions are not in the format you expect
+        'microarray_signal': x_test_microarray.flatten(),
+        'atac_accessibility': x_test_accessibility.flatten()
+    })
+
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_acc_mic_gen_WDLPS.csv'
+    df.to_csv(csv_file_path, index=False)
+
     # Save results and print evaluation metrics
-    save_sequence_data_to_csv(sequences_test, classifications_test, predictions, x_test_accessibility, 'atac_files/genNullSeq_access_data.csv')
     print("Test loss:", test_scores[0])
     print("Test Accuracy:", test_scores[1])
     print("Test AUC:", test_scores[2])
@@ -458,12 +511,14 @@ def main_genNullSeq_access_WDLPS():
     return history
 
 
-def main_genNullSeq_access():
+
+
+def main_genNullSeq():
     positive_file = 'pos_txt_files/HEK_iM.txt'
     negative_file = 'genNellSeq/negHEKiM.txt'
     df_positive = pd.read_csv('atac_files/HEK_iM_SCORES', sep=',', header=0, names=columns)
     df_negative = pd.read_csv('atac_files/negHEKiM_SCORES', sep=',', header=0, names=columns)
-    df_microarray_negative = pd.read_csv('microarray_files/signals_data_negHekiMgen.csv')
+    df_microarray_negative = pd.read_csv('microarray_files/signals_data_negHekiM.csv')
 
     # Create the lists to store SequenceData objects
     test_data, train_data = createlistpos(positive_file, df_positive, df_microarray)
@@ -471,20 +526,6 @@ def main_genNullSeq_access():
     # Add negative sequences to the appropriate lists
     test_data, train_data = add_negatives_to_list(test_data, train_data, negative_file, df_negative, df_microarray_negative)
 
-    def print_sample_sequence_data(train_data, test_data, num_samples=5):
-        # Shuffle both datasets to ensure a random selection of samples
-        random.shuffle(train_data)
-        random.shuffle(test_data)
-
-        print("Sample Positive Data:")
-        for data in train_data[:num_samples]:
-            print(data.__dict__)
-        print("\nSample Negative Data:")
-        for data in test_data[:num_samples]:
-            print(data.__dict__)
-
-    # Call the function to print sample data
-    print_sample_sequence_data(train_data, test_data)
 
     # Shuffle the data
     random.shuffle(train_data)
@@ -530,7 +571,9 @@ def main_genNullSeq_access():
     # Assuming y_test are your true labels
     df = pd.DataFrame({
         'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
-        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+        'Predictions': predictions.flatten() , # Adjust if predictions are not in the format you expect
+        'microarray_signal': x_test_microarray.flatten(),
+        'atac_accessibility': x_test_accessibility.flatten()
     })
 
     # Save the DataFrame to a CSV file
@@ -543,5 +586,7 @@ def main_genNullSeq_access():
 
     return history
 
-
-
+main_random_access_WD()
+main_genNullSeq_access_WDLPS()
+#main_genNullSeq()
+#main_random_access()

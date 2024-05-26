@@ -1,52 +1,54 @@
-import re
 import numpy as np
 import matplotlib.pyplot as plt
 
-def histogram():
-    # Define a regular expression pattern to match the sequences (including both upper and lower case letters)
-    pattern = r'>([^\n]+)\n([ACGTacgt\n]+)'
+# Function to read sequences from the provided file
+def read_lengths(file_path):
+    lengths = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            parts = line.strip().split()
+            if len(parts) >= 3:
+                start = int(parts[1])
+                end = int(parts[2])
+                lengths.append(end - start)
+    return lengths
 
 
-    # Create a dictionary to store both positive and negative sequences with classifications
-    sequence_dict = {}
+# Paths to the files
+file_path_hek = '../pos_bed_files/HEK_iM_high_confidence_peaks.bed'
+file_path_wdlps = '../pos_bed_files/WDLPS_iM_high_confidence_peaks.bed'
 
-    with open('genNellSeq/negHekG4gen.txt', 'r') as file:
-        data = file.read()
+# Read sequences from files
+lengths_hek = read_lengths(file_path_hek)
+lengths_wdlps = read_lengths(file_path_wdlps)
 
-    # Use re.findall to extract all positive sequences
-    matches = re.findall(pattern, data)
+# Calculate lengths
+median_length_hek = np.median(lengths_hek)
+median_length_wdlps = np.median(lengths_wdlps)
 
-    # Convert the matched sequences to uppercase and store them in the dictionary with classification 1
-    for header, sequence in matches:
-        sequence = sequence.replace('\n', '')  # Remove newline characters within the sequence
-        sequence_dict[sequence]=1
-    # Extract the lengths of the sequences and store them in a list
-    sequence_lengths = [len(seq) for seq in sequence_dict]
-    # Calculate the median length
-    median_length = np.median(sequence_lengths)
-    # Create a histogram
-    n, bins, patches = plt.hist(sequence_lengths, bins=1000, color='blue', edgecolor='black')
-    plt.title('Histogram of DNA Sequence Lengths HEK-iM')
-    plt.xlabel('Sequence Length')
-    plt.ylabel('Frequency')
+# Plotting the histogram with more bins and proper x-axis label
+plt.figure(figsize=(10, 6))
 
-    # Set the x-axis limits to focus on a specific range (adjust these values as needed)
-    plt.xlim(0, 1250)
+# Histogram for HEK
+plt.hist(lengths_hek, bins=200, color='skyblue', range=(0, 800), alpha=0.5, label=f'Hek high confidence peaks\n(n={len(lengths_hek)})')
 
-    # Find the bin with the highest frequency
-    max_bin_frequency = max(n)
-    max_bin_index = np.where(n == max_bin_frequency)[0][0]
-    max_bin_value = (bins[max_bin_index] + bins[max_bin_index + 1]) / 2
+# Histogram for WDLPS
+plt.hist(lengths_wdlps, bins=200, color='orange', range=(0, 800), alpha=0.5, label=f'Wdlps high confidence peaks\n(n={len(lengths_wdlps)})')
 
-    # Display the median, mode, and the value of the bin with the highest frequency on the plot
-    plt.axvline(max_bin_value, color='purple', linestyle='dashed', linewidth=2, label='Max Bin Value')
-    plt.legend()
+# Highlight the medians
+plt.axvline(median_length_hek, color='blue', linestyle='dashed', linewidth=1, label=f'Median: {median_length_hek} (hek)')
+plt.axvline(median_length_wdlps, color='darkorange', linestyle='dashed', linewidth=1, label=f'Median: {median_length_wdlps} (wdlps)')
 
-    plt.show()
-    print(max_bin_value)
-    print(median_length)
-    min_length = min(sequence_lengths)
-    print(min_length)
+# Add legend
+plt.legend(loc='upper right')
 
+# Add labels
+plt.xlabel('iM length (base pairs)')
+plt.ylabel('Frequency')
+# Set y-axis limits
+plt.ylim(0, 600)
 
-histogram()
+# Show plot without the title
+plt.tight_layout()
+#plt.show()
+plt.savefig('iM_length_histogram.png')

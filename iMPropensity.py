@@ -8,7 +8,7 @@ import pandas as pd
 import re
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import pearsonr, spearmanr
+import logomaker
 
 # Define the model hyperparameters
 n_filters = 256
@@ -44,6 +44,82 @@ class SequenceData:
         cut_from_seq = length // 2
         return self.sequence[midpoint - cut_from_seq:midpoint + cut_from_seq]
 
+################for the integrated gradients################
+def integrated_gradients(inputs, model, target_class_idx, baseline=None, steps=50):
+    if baseline is None:
+        baseline = np.zeros(inputs.shape)
+    else:
+        baseline = baseline
+
+    interpolated_inputs = [
+        baseline + (float(i) / steps) * (inputs - baseline) for i in range(steps + 1)
+    ]
+
+    interpolated_inputs = [tensorflow.convert_to_tensor(input, dtype=tensorflow.float32) for input in interpolated_inputs]
+
+    grads = []
+    for input in interpolated_inputs:
+        with tensorflow.GradientTape() as tape:
+            tape.watch(input)
+            preds = model(tensorflow.expand_dims(input, axis=0))  # Add batch dimension
+            target_class = preds[:, target_class_idx]
+
+        grads.append(tape.gradient(target_class, input))
+
+    avg_grads = np.mean(grads, axis=0)
+    integrated_grads = (inputs - baseline) * avg_grads
+    return integrated_grads
+
+
+def plot_integrated_gradients_logomaker(attributions, sequence):
+    # Prepare the data for logomaker
+    data = pd.DataFrame(attributions, columns=['A', 'C', 'G', 'T'])
+
+    # Create the logo plot
+    fig, ax = plt.subplots(figsize=(15, 5))
+    crp_logo = logomaker.Logo(data, ax=ax, shade_below=0.5, fade_below=0.5, font_name='Arial Rounded MT Bold')
+
+    # Style the logo plot
+    crp_logo.style_spines(spines=['left', 'bottom'], visible=True)
+    crp_logo.ax.set_ylabel("Attribution score", labelpad=-1, fontsize=14)
+    crp_logo.ax.set_xticks([])
+    crp_logo.ax.axhline(0, color='black', linewidth=0.5)
+    plt.title('Integrated Gradients for Sequence')
+    plt.show()
+
+def one_hot_encode(sequence):
+        mapping = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
+        one_hot = np.zeros((len(sequence), 4))
+        for i, nucleotide in enumerate(sequence):
+            one_hot[i, mapping[nucleotide]] = 1
+        return one_hot
+def integrated_gradients_example(my_model):
+    sequence = "CAGGGCGCCCCCTGCTGGCGACTAGGGCAACTGCAGGGCTCTCTTGCTTAGAGTGGTGGCCAGCGCCCCCTGCTGGCGCCGGGGCACTGCAGGGCCCTCTTGCTTACTGTATAGTGGTGGCACG"  # Replace with your actual sequence
+    one_hot_sequence = one_hot_encode(sequence)
+    target_class_idx = 0  # Change as per your target class
+
+    attributions = np.zeros((len(sequence), 4))
+    count_matrix = np.zeros(len(sequence))
+
+    for i in range(0, len(sequence) - window_seq + 1):
+        window_sequence = sequence[i:i + window_seq]
+        one_hot_window = one_hot_encode(window_sequence)
+        window_attributions = integrated_gradients(one_hot_window, my_model, target_class_idx)
+
+        attributions[i:i + window_seq] += window_attributions
+        count_matrix[i:i + window_seq] += 1
+
+    # Average the attributions
+    attributions /= count_matrix[:, None]
+
+    # Aggregate attributions to match sequence length
+    aggregated_attributions = np.sum(attributions, axis=1)
+
+    # Visualize the integrated gradients
+    plot_integrated_gradients_logomaker(attributions, sequence)
+
+
+#####################################################################
 def create_train_list(file_path):
     train_list = []
     data = pd.read_csv(file_path)
@@ -77,13 +153,14 @@ def create_test_list(file_path):
         extracted_sequence = seq_data.extracted_sequence(124)
 
         if len(extracted_sequence) == 124:
-            complement = seq_data.calculate_reverse_complement()
-            c_count_sequence = extracted_sequence.count('C')
-            c_count_complement = complement.count('C')
+            seq_data.sequence = extracted_sequence  # Update the sequence in seq_data
+            #complement = seq_data.calculate_reverse_complement()
+            #c_count_sequence = seq_data.sequence.count('C')
+            #c_count_complement = complement.count('C')
 
             # Select the sequence with the most G's
-            chosen_sequence = extracted_sequence if c_count_sequence >= c_count_complement else complement
-            seq_data.sequence = chosen_sequence  # Update the sequence in seq_data
+            #chosen_sequence = extracted_sequence if c_count_sequence >= c_count_complement else complement
+            #seq_data.sequence = chosen_sequence  # Update the sequence in seq_data
             test_list.append(seq_data)
 
     return test_list
@@ -140,13 +217,13 @@ def load_sequences_from_csv(csv_path):
 
 
 def main():
-    file_test = 'txt_permutaion/WDLPS_iM_perm_neg.txt'
+    #file_test = 'genNellSeq/negWDLPSiM.txt'
     file_train = 'microarray_files/final_table_microarray.csv'
-    #sequences_df = pd.read_csv('interpation_file/mutations.csv')
+    sequences_df = pd.read_csv('interpation_file/mutations.csv')
     # Create train and test lists using the respective functions
     train_list = create_train_list(file_train)
-    test_list = create_test_list(file_test)
-    #test_list = load_sequences_from_csv('interpation_file/mutations.csv')
+    #test_list = create_test_list(file_test)
+    test_list = load_sequences_from_csv('interpation_file/mutations.csv')
 
     # Shuffle the training data
     random.shuffle(train_list)
@@ -174,7 +251,7 @@ def main():
     # Then, when preparing data for batch prediction
     for sequence_index, sequence_str in enumerate(x_test):
         sequence_length = len(sequence_str)
-        for i in range(0, sequence_length - window_seq + 1, window_seq):
+        for i in range(0, sequence_length - window_seq + 1, 1):
             extracted_sequence = sequence_str[i:i + window_seq]
             encoded_sequence = one_hot_encoding(extracted_sequence)
             all_encoded_windows.append(encoded_sequence)
@@ -185,19 +262,25 @@ def main():
     all_predictions = my_model.predict(all_encoded_windows).flatten()
 
     # Process predictions to find the max signal for each original sequence
-    predictions = [0] * len(x_test)  # Initialize list for max predictions per sequence
+    predictions = [[] for _ in range(len(x_test))]
+    # Collecting all predictions
     for idx, prediction in zip(sequence_index_map, all_predictions):
-        predictions[idx] = max(predictions[idx], prediction)
-
+        predictions[idx].append(prediction)  # Append the prediction to the list corresponding to idx
     # Save predictions to CSV
     sequences_test = [seq_data.sequence for seq_data in test_list]  # Extract full sequences for saving
-    #print(len(sequences_test), len(predictions))
-    #sequences_df['Signal'] = predictions
-    # Save the dataframe with the new predictions to the same CSV file
-    #sequences_df.to_csv('mutations.csv',index=False)  # Replace with your desired file path
+    average_predictions = [np.mean(pred_list) if pred_list else float('nan') for pred_list in predictions]
+    # Create DataFrame
+  
+    df = pd.DataFrame({
+        'Sequence': sequences_test,
+        'Average Prediction': average_predictions
+    })
 
-    print("Predictions have been added to the CSV file.")
-    save_signals_to_csv(sequences_test, predictions, 'microarray_files/signals_data_WDLPS_iM_perm.csv')
+    # Save DataFrame to CSV file
+    csv_filename = 'microarray_files/signals_data_mutations.csv'  # Specify your desired path and file name
+    df.to_csv(csv_filename, index=False)
+
+    print("Predictions have been saved to the CSV file at:", csv_filename)
 
 main()
 

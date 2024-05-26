@@ -158,8 +158,8 @@ def createlistposWD(positive_file,df_positive):
         extracted_sequence = sequence[midpoint - 62:midpoint + 62]
         if len(extracted_sequence) == 124:
             complement = calculate_reverse_complement(extracted_sequence)
-            c_count_sequence = extracted_sequence.count('G')
-            c_count_complement = complement.count('G')
+            c_count_sequence = extracted_sequence.count('C')
+            c_count_complement = complement.count('C')
             chrom_parts = chromosome.split(':')
             start_pos = int(chrom_parts[1].split('-')[0]) + (midpoint - 62)
             end_pos = int(chrom_parts[1].split('-')[0]) + (midpoint + 62)
@@ -299,14 +299,14 @@ def main_random_access():
     return history
 
 def main_random_access_wdlps():
-    positive_file_train = 'pos_txt_files/HEK_G4.txt'
-    negative_file_train = 'random_neg/HEK_G4_neg.txt'
-    positive_file_test = 'pos_txt_files/WDLPS_G4.txt'
-    negative_file_test = 'random_neg/WDLPS_G4_neg.txt'
-    df_positive_test = pd.read_csv('atac_files/WDLPS_G4_SCORES', sep=',', header=0, names=columns)
-    df_negative_test = pd.read_csv('atac_files/WDLPS_G4_neg_SCORES', sep=',', header=0, names=columns)
-    df_positive_train = pd.read_csv('atac_files/HEK_G4_SCORES', sep=',', header=0, names=columns)
-    df_negative_train = pd.read_csv('atac_files/HEK_G4_neg_SCORES', sep=',', header=0, names=columns)
+    positive_file_train = 'pos_txt_files/HEK_iM.txt'
+    negative_file_train = 'random_neg/HEK_iM_neg.txt'
+    positive_file_test = 'pos_txt_files/WDLPS_iM.txt'
+    negative_file_test = 'random_neg/WDLPS_iM_neg.txt'
+    df_positive_test = pd.read_csv('atac_files/WDLPS_iM_SCORES', sep=',', header=0, names=columns)
+    df_negative_test = pd.read_csv('atac_files/WDLPS_iM_neg_SCORES', sep=',', header=0, names=columns)
+    df_positive_train = pd.read_csv('atac_files/HEK_iM_SCORES', sep=',', header=0, names=columns)
+    df_negative_train = pd.read_csv('atac_files/HEK_iM_neg_SCORES', sep=',', header=0, names=columns)
 
     # Create the lists to store SequenceData objects
     test_data = createlistposWD(positive_file_test,df_positive_test)
@@ -347,11 +347,15 @@ def main_random_access_wdlps():
     sequences_test = np.array([seq.sequence for seq in test_data])
     classifications_test = np.array([seq.classification for seq in test_data])
     predictions = np.array(predictions)  # Assuming predictions is already in a list format
-    x_test_accessibility = np.array([seq.accessibility for seq in test_data])
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+    })
 
-    save_sequence_data_to_csv(sequences_test, classifications_test, predictions, x_test_accessibility,
-                              'atac_files/random_access_wdlps_data_iM.csv')
-
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_acc_random_WDLPS.csv'
+    df.to_csv(csv_file_path, index=False)
     # Evaluate the model
     print("Test loss:", test_scores[0])
     print("Test Accuracy:", test_scores[1])
@@ -418,14 +422,14 @@ def main_genNullSeq_access():
     return history
 
 def main_genNullSeq_access_wdlps():
-    positive_file_train = 'pos_txt_files/HEK_G4.txt'
-    negative_file_train = 'genNellSeq/negHekG4.txt'
-    positive_file_test = 'pos_txt_files/WDLPS_G4.txt'
-    negative_file_test = 'genNellSeq/negWDLPSG4.txt'
-    df_positive_test = pd.read_csv('atac_files/WDLPS_G4_SCORES', sep=',', header=0, names=columns)
-    df_negative_test = pd.read_csv('atac_files/negWDLPSG4_SCORES', sep=',', header=0, names=columns)
-    df_positive_train = pd.read_csv('atac_files/HEK_G4_SCORES', sep=',', header=0, names=columns)
-    df_negative_train = pd.read_csv('atac_files/negHekG4_SCORES', sep=',', header=0, names=columns)
+    positive_file_train = 'pos_txt_files/HEK_iM.txt'
+    negative_file_train = 'genNellSeq/negHekiM.txt'
+    positive_file_test = 'pos_txt_files/WDLPS_iM.txt'
+    negative_file_test = 'genNellSeq/negWDLPSiM.txt'
+    df_positive_test = pd.read_csv('atac_files/WDLPS_iM_SCORES', sep=',', header=0, names=columns)
+    df_negative_test = pd.read_csv('atac_files/negWDLPSiM_SCORES', sep=',', header=0, names=columns)
+    df_positive_train = pd.read_csv('atac_files/HEK_iM_SCORES', sep=',', header=0, names=columns)
+    df_negative_train = pd.read_csv('atac_files/negHekiM_SCORES', sep=',', header=0, names=columns)
 
     # Create the lists to store SequenceData objects
     test_data = createlistposWD(positive_file_test,df_positive_test)
@@ -467,10 +471,15 @@ def main_genNullSeq_access_wdlps():
     sequences_test = np.array([seq.sequence for seq in test_data])
     classifications_test = np.array([seq.classification for seq in test_data])
     predictions = np.array(predictions)  # Assuming predictions is already in a list format
-    x_test_accessibility = np.array([seq.accessibility for seq in test_data])
+    # Assuming y_test are your true labels
+    df = pd.DataFrame({
+        'True_Labels': y_test.flatten(),  # Adjust this if your labels are not already in a 1D format
+        'Predictions': predictions.flatten()  # Adjust if predictions are not in the format you expect
+    })
 
-    save_sequence_data_to_csv(sequences_test, classifications_test, predictions, x_test_accessibility,
-                              'atac_files/genNullSeq_access_wdlps_data_iM.csv')
+    # Save the DataFrame to a CSV file
+    csv_file_path = 'AUROC/predictions_and_true_labels_acc_gen_WDLPS.csv'
+    df.to_csv(csv_file_path, index=False)
 
     print("Test loss:", test_scores[0])
     print("Test Accuracy:", test_scores[1])
@@ -478,5 +487,5 @@ def main_genNullSeq_access_wdlps():
 
     return history
 
-history_random = main_random_access()
-history_genNull = main_genNullSeq_access()
+history_random = main_random_access_wdlps()
+history_genNull = main_genNullSeq_access_wdlps()

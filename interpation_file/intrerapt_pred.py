@@ -124,7 +124,7 @@ def add_negatives_to_list(sequence_list, negative_file):
 # Main function
 if __name__ == "__main__":
     positive_file = '../pos_txt_files/HEK_iM.txt'
-    negative_file_train = '../genNellSeq/negHekiM.txt'
+    negative_file_train = '../random_neg/HEK_iM_neg.txt'
 
     # Generate training sequences
     train_sequences = createTrainlist()
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     predictions = nn_model.predict(encoded_sequences)
 
     # Add the predictions as a new column to the dataframe
-    sequences_df['Prediction_gen_seq'] = predictions.flatten()
+    sequences_df['Prediction_rand'] = predictions.flatten()
 
     # Save the dataframe with the new predictions to the same CSV file
     sequences_df.to_csv('mutations.csv',

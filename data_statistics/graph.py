@@ -9,6 +9,42 @@ def load_data(filepath):
     return pd.read_csv(filepath)
 
 
+def plot_roc_curves(files_and_models, title, save_path):
+    plt.figure(figsize=(10, 8))
+    plt.plot([0, 1], [0, 1], 'k--', label='Chance (AUC = 0.50)')  # Plot the chance line
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(title)
+
+    for file_path, label in files_and_models:
+        data = pd.read_csv(file_path)
+        predictions = data[data.columns[
+            data.columns.str.contains('pred', case=False, regex=True)]]  # Assumes prediction columns contain 'pred'
+        true_labels = data['True_Labels']
+        fpr, tpr, _ = roc_curve(true_labels, predictions.iloc[:, 0])
+        roc_auc = auc(fpr, tpr)
+
+        # Define color and style based on the label
+        if 'SEQ' in label:
+            color = 'pink' if 'YES' in label else 'lightblue'
+        else:
+            color = 'grey'  # Default color if SEQ is not involved
+
+        linestyle = '--' if 'MICRO' in label else '-'
+
+        # Define marker based on ATAC inclusion
+        marker = 'D' if 'ATAC' in label else None  # 'D' for diamond shape
+
+        plt.plot(fpr, tpr, label=f'{label} (AUC = {roc_auc:.2f})', color=color, linestyle=linestyle, marker=marker)
+
+    plt.legend(loc="lower right")
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.show()
+
+
 # Function to plot ROC curves
 def plot_roc_curves(files_and_models):
     fig, axes = plt.subplots(nrows=1, ncols=len(files_and_models), figsize=(18, 6), sharey=True)
@@ -56,45 +92,152 @@ def plot_and_save_heatmap_for_model(prediction_column, mutations_data):
     baseline = mutations_data[mutations_data['Original_Nucleotide'] == mutations_data['Mutated_Nucleotide']]
     baseline_dict = dict(zip(baseline['Position'], baseline[prediction_column]))
 
+    # Ensure calculation is WT - MUTATION
     def calculate_difference(row):
-        return row[prediction_column] - baseline_dict.get(row['Position'], row[prediction_column])
+        return baseline_dict.get(row['Position'], row[prediction_column]) - row[prediction_column]
 
     mutations_data['Difference'] = mutations_data.apply(calculate_difference, axis=1)
     differences = mutations_data[mutations_data['Original_Nucleotide'] != mutations_data['Mutated_Nucleotide']]
     heatmap_data = differences.pivot_table(index='Mutated_Nucleotide', columns='Position', values='Difference',
-                                           aggfunc='mean').fillna(0).reindex(['A', 'T', 'C', 'G'])
+                                           aggfunc='mean').fillna(0).reindex(['A', 'C', 'G', 'T'])
+
     plt.figure(figsize=(20, 5))
-    sns.heatmap(heatmap_data, cmap='RdBu_r', center=0, cbar_kws={'label': 'Prediction Score Difference'})
-    plt.title(f'Heatmap of {prediction_column} Score Differences')
-    plt.xlabel('Position')
-    plt.ylabel('Mutated Nucleotide')
+    ax = sns.heatmap(heatmap_data, cmap='RdBu_r', center=0, cbar_kws={'label': 'Prediction score difference\n(wild type - variant)'})
+
+    # Set the title and axis labels
+    ax.set_title(f'Heatmap of {prediction_column} score differences')
+    ax.set_xlabel('Position')
+    ax.set_ylabel('Nucleotide')
+
+    # Adding black dots for WT positions
+    wt_data = mutations_data[mutations_data['Original_Nucleotide'] == mutations_data['Mutated_Nucleotide']]
+    for _, row in wt_data.iterrows():
+        mut_nucleotide = row['Original_Nucleotide']
+        pos = row['Position']
+        ax.plot(pos - 0.5, ['A', 'C', 'G', 'T'].index(mut_nucleotide) + 0.5, 'ko')  # Adjusted to plot at the center of the cells
+
+    # Save and show the plot
     plt.savefig(f"{prediction_column}_heatmap.png")
+    plt.show()
     plt.close()
 
+
+def plot_roc_curves_for_group(group_name, group_data):
+    plt.figure(figsize=(14, 8))  # הגדלת גודל הגרף לקריאות טובה יותר
+    # Ensuring group_data is a dictionary
+    if not isinstance(group_data, dict):
+        print(f"Error: Data for {group_name} is not formatted correctly.")
+        return
+
+    # רשימת צבעים מורחבת
+    color_list = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'black', 'orange', 'purple', 'brown',
+                  'pink', 'lime', 'teal', 'lavender', 'turquoise', 'tan', 'gold', 'darkgreen', 'lightblue', 'navy', 'coral']
+
+    for i, (subgroup, entries) in enumerate(group_data.items()):
+        ax = plt.subplot(1, len(group_data), i + 1)
+        ax.plot([0, 1], [0, 1], 'k--', lw=0.5)  # קו הסיכוי
+        ax.set_xlim([0.0, 1.0])
+        ax.set_ylim([0.0, 1.05])
+        ax.set_xlabel('False Positive Rate', fontsize=12)  # הגדלת גופן
+        ax.set_ylabel('True Positive Rate', fontsize=12)
+        ax.set_title(f'ROC Curve {subgroup}', fontsize=14)  # כותרת בגודל גדול יותר
+
+        for j, (file_path, label) in enumerate(entries):
+            data = pd.read_csv(file_path)
+            prediction_column = next((col for col in data.columns if 'predict' in col.lower()), None)
+            if label == 'Microarray signals':
+                prediction_column = next((col for col in data.columns if 'signal' in col.lower()), None)
+            if label == 'ATAC signals':
+                prediction_column = next((col for col in data.columns if 'atac' in col.lower()), None)
+
+            color = color_list[j % len(color_list)]  # קבלת הצבע הבא ברשימה
+
+            fpr, tpr, _ = roc_curve(data['True_Labels'], data[prediction_column])
+            roc_auc = auc(fpr, tpr)
+            ax.plot(fpr, tpr, label=f'{label} (AUC = {roc_auc:.3f})', color=color, lw=1)
+
+        ax.legend(loc="lower right", fancybox=True, shadow=True, ncol=1)
+    plt.suptitle(f'ROC Curves for {group_name}', fontsize=16)
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    plt.savefig(f'ROC_Curve_{group_name}.png')
+    plt.show()
+
+# Function to plot violin plots
+def plot_combined_violin_plots(data, prediction_columns, core_length_columns):
+    sns.set(style="whitegrid")
+    for pred_col in prediction_columns:
+        plt.figure(figsize=(20, 8))
+        for i, core_col in enumerate(core_length_columns, start=1):
+            plt.subplot(1, len(core_length_columns), i)
+            sns.violinplot(x=core_col, y=pred_col, data=data, inner="box", palette="muted")
+            plt.title(f'{pred_col} - {core_col}')
+            plt.xlabel('Core Length')
+            plt.ylabel('Prediction Score')
+        plt.tight_layout()
+        plt.savefig(f'violin_plot_for_{pred_col.replace("/", "_")}.png')
+        plt.show()
 
 # Main execution
 if __name__ == "__main__":
     # Define your file names and models here
+    """
     files_and_models = {
-        'random': [
-            ('../AUROC/predictions_and_true_labels_seq_random.csv', 'Sequence only'),
-            ('../AUROC/predictions_and_true_labels_acc_random.csv', 'Sequence + ATAC'),
-            ('../AUROC/predictions_and_true_labels_micro_rand.csv', 'Sequence + microarray signals'),
-            ('../AUROC/predictions_and_true_labels_acc_mic_ran.csv', 'Sequence + microarray signals + ATAC')
-        ],
-        'permutation': [
-            ('../AUROC/predictions_and_true_labels_seq_perm.csv', 'Sequence only'),
-            ('../AUROC/predictions_and_true_labels_micro_perm.csv', 'Sequence + microarray signals')
-        ],
-        'genNullSeq': [
-            ('../AUROC/predictions_and_true_labels_seq_gen.csv', 'Sequence only'),
-            ('../AUROC/predictions_and_true_labels_acc_gen.csv', 'Sequence + ATAC'),
-            ('../AUROC/predictions_and_true_labels_micro_gen.csv', 'Sequence + microarray signals'),
-            ('../AUROC/predictions_and_true_labels_acc_mic_gen.csv', 'Sequence + microarray signals + ATAC')
-        ]
+        'RANDOM': {
+            'HEK': [
+                ('../AUROC/predictions_and_true_labels_seq_random.csv', 'Sequence only'),
+                ('../AUROC/predictions_and_true_labels_acc_random.csv', 'Sequence + ATAC'),
+                ('../AUROC/predictions_and_true_labels_micro_rand.csv', 'Sequence + microarray signals'),
+                ('../AUROC/predictions_and_true_labels_acc_mic_ran.csv', 'Sequence + microarray signals + ATAC'),
+                ('../AUROC/predictions_and_true_labels_acc_mic_ran.csv', 'Microarray signals'),
+                ('../AUROC/predictions_and_true_labels_acc_mic_ran.csv', 'ATAC signals')
+            ],
+            'WDLPS': [
+                ('../AUROC/predictions_and_true_labels_seq_random_WDLPS.csv', 'Sequence only'),
+                ('../AUROC/predictions_and_true_labels_acc_random_WDLPS.csv', 'Sequence + ATAC'),
+                ('../AUROC/predictions_and_true_labels_micro_rand_WDLPS.csv', 'Sequence + microarray signals'),
+                ('../AUROC/predictions_and_true_labels_acc_mic_ran_WDLPS.csv', 'Sequence + microarray signals + ATAC'),
+                ('../AUROC/predictions_and_true_labels_acc_mic_ran_WDLPS.csv', 'Microarray signals'),
+                ('../AUROC/predictions_and_true_labels_acc_mic_ran_WDLPS.csv', 'ATAC signals')
+            ]
+        },
+        'DISHUFFLE': {
+            'HEK': [
+                ('../AUROC/predictions_and_true_labels_seq_perm.csv', 'Sequence only'),
+                ('../AUROC/predictions_and_true_labels_micro_perm.csv', 'Sequence + microarray signals'),
+                ('../AUROC/predictions_and_true_labels_micro_perm.csv', 'Microarray signals')
+            ],
+            'WDLPS': [
+                ('../AUROC/predictions_and_true_labels_seq_perm_WDLPS.csv', 'Sequence only'),
+                ('../AUROC/predictions_and_true_labels_micro_perm_WDLPS.csv', 'Sequence + microarray signals'),
+                ('../AUROC/predictions_and_true_labels_micro_perm_WDLPS.csv', 'Microarray signals')
+            ]
+        },
+        'GENNULSEQ': {
+            'HEK': [
+                ('../AUROC/predictions_and_true_labels_seq_gen.csv', 'Sequence only'),
+                ('../AUROC/predictions_and_true_labels_acc_gen.csv', 'Sequence + ATAC'),
+                ('../AUROC/predictions_and_true_labels_micro_gen.csv', 'Sequence + microarray signals'),
+                ('../AUROC/predictions_and_true_labels_acc_mic_gen.csv', 'Sequence + microarray signals + ATAC'),
+                ('../AUROC/predictions_and_true_labels_acc_mic_gen.csv', 'Microarray signals'),
+                ('../AUROC/predictions_and_true_labels_acc_mic_gen.csv', 'ATAC signals')
+            ],
+            'WDLPS': [
+                ('../AUROC/predictions_and_true_labels_seq_gen_WDLPS.csv', 'Sequence only'),
+                ('../AUROC/predictions_and_true_labels_acc_gen_WDLPS.csv', 'Sequence + ATAC'),
+                ('../AUROC/predictions_and_true_labels_micro_gen_WDLPS.csv', 'Sequence + microarray signals'),
+                ('../AUROC/predictions_and_true_labels_acc_mic_gen_WDLPS.csv', 'Sequence + microarray signals + ATAC'),
+                ('../AUROC/predictions_and_true_labels_acc_mic_gen_WDLPS.csv', 'Microarray signals'),
+                ('../AUROC/predictions_and_true_labels_acc_mic_gen_WDLPS.csv', 'ATAC signals')
+            ]
+        }
     }
-    plot_roc_curves(files_and_models)
-    df = load_data('../interpation_file/merged_data.csv')
+
+    # Generate ROC curves for each group
+    for group_name, group_data in files_and_models.items():
+        plot_roc_curves_for_group(group_name, group_data)
+        
+   
+    df = load_data('../interpation_file/Merged_Predictions_Data.csv')
     prediction_columns = [
     'Prediction_perm_seq_0.25',
     'Prediction_rand_seq_0.25',
@@ -108,18 +251,21 @@ if __name__ == "__main__":
     'Prediction_perm_mic_0.33',
     'Prediction_rand_mic_0.33',
     'Prediction_gen_mic_0.33',
-    'Signal'
+    'microarray_signal'
 ]
-    plot_prediction_distributions(df, prediction_columns)
+    #plot_prediction_distributions(df, prediction_columns)
+    core_length_columns = ['Core1_Length', 'Core2_Length', 'Core3_Length', 'Core4_Length']
+    # Generate violin plots
+    plot_combined_violin_plots(df, prediction_columns, core_length_columns)
+ """
+
     mutations_data = load_data('../interpation_file/mutations.csv')
     prediction_models = [
-        'Prediction_perm_seq',
-        'Prediction_rand_seq',
-        'Prediction_gen_seq',
         'Signal',
-        'Prediction_perm_mic',
-        'Prediction_rand_mic',
-        'Prediction_gen_mic'
+        'Prediction_gen',
+        'Prediction_perm',
+        'Prediction_rand',
+        'Signal_max'
     ]
     for model in prediction_models:
         plot_and_save_heatmap_for_model(model, mutations_data)

@@ -5,10 +5,8 @@ desired_length = 124
 
 
 # Open the input BED file and the output BED file
-with open('../pos_bed_files/HEK_iM.bed', 'r') as infile, open('Hek_iM_124.bed', 'w') as outfile:
+with open('../pos_bed_files/WDLPS_iM_high_confidence_peaks.bed', 'r') as infile, open('WDLPS_iM_124.bed', 'w') as outfile:
     for line in infile:
-        fields = line.strip().split('\t')
-        chrom, start, end = fields[0], int(fields[1]), int(fields[2])
         fields = line.strip().split('\t')
         chrom, start, end = fields[0], int(fields[1]), int(fields[2])
         current_length = end - start

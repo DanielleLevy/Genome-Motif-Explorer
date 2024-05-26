@@ -154,10 +154,10 @@ if __name__ == "__main__":
 
     # Part 1: Training the model with training data
     positive_file = '../pos_txt_files/HEK_iM.txt'
-    negative_file_train = '../genNellSeq/negHekiM.txt'
+    negative_file_train = '../txt_permutaion/HEK_iM_perm_neg.txt'
     # Generate training sequences
     df_microarray = pd.read_csv('../microarray_files/signals_data_HEK_iM.csv')
-    df_microarray_negative = pd.read_csv('../microarray_files/signals_data_negHekiMgen.csv')
+    df_microarray_negative = pd.read_csv('../microarray_files/signals_data_HEK_iM_perm.csv')
     train_sequences = createTrainlist()
     train_sequences = add_negatives_to_list(train_sequences, negative_file_train)
     random.shuffle(train_sequences)
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     # Predict using the model
     predictions = nn_model.predict([encoded_sequences, signals])
     # Add the predictions as a new column to the dataframe
-    sequences_df['Prediction_gen_mic'] = predictions.flatten()
+    sequences_df['Prediction_perm_mic'] = predictions.flatten()
     # Save the dataframe with the new predictions to the same CSV file
     sequences_df.to_csv('mutations.csv',
                         index=False)  # Replace with your desired file path
