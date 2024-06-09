@@ -275,7 +275,7 @@ def one_hot_encode(sequence):
     return one_hot
 
 def integrated_gradients_example(my_model):
-    sequence = "CAGGGCGCCCCCTGCTGGCGACTAGGGCAACTGCAGGGCTCTCTTGCTTAGAGTGGTGGCCAGCGCCCCCTGCTGGCGCCGGGGCACTGCAGGGCCCTCTTGCTTACTGTATAGTGGTGGCACG"  # Replace with your actual sequence
+    sequence = "TATGAATAAACTCCCATTGCATTTGTTGGGGGGAGTCATGTATTATGCATTATGTATGCACAGCTATCTGGATTGGATACCTTCCACCCAGACTGAGTCCCCCAATTTGCTGCCAAAGCAGCAG"  # Replace with your actual sequence
     one_hot_sequence = one_hot_encode(sequence)
     target_class_idx = 0  # Change as per your target class
 
@@ -293,13 +293,13 @@ positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
 #main with permutaions
 def main_permutions():
     negative_file = 'txt_permutaion/HEK_iM_perm_neg.txt'
-    #negative_file_train = 'txt_permutaion/HEK_iM_perm_neg.txt'
-    #negative_file_test = 'txt_permutaion/WDLPS_iM_perm_neg.txt'
-    #test_dict,train_dict = createDictWDLPS()
-    test_dict, train_dict = createDict()
-    test_dict, train_dict = add_negatives_to_dict(test_dict,train_dict,negative_file)
-    #test_dict = add_negatives_to_dict_WDLPS(test_dict, negative_file_test)
-    #train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
+    negative_file_train = 'txt_permutaion/HEK_iM_perm_neg.txt'
+    negative_file_test = 'txt_permutaion/WDLPS_iM_perm_neg.txt'
+    test_dict,train_dict = createDictWDLPS()
+    #test_dict, train_dict = createDict()
+    #test_dict, train_dict = add_negatives_to_dict(test_dict,train_dict,negative_file)
+    test_dict = add_negatives_to_dict_WDLPS(test_dict, negative_file_test)
+    train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
     # Sizes of train and test dictionaries
     print("Train set size:", len(train_dict))  # Number of samples in the train set
     print("Test set size:", len(test_dict))  # Number of samples in the test set
@@ -355,14 +355,14 @@ def main_permutions():
 def main_random():
     negative_file= 'random_neg/HEK_iM_neg.txt'
     positive_file_train= 'pos_txt_files/HEK_iM.txt'
-    #negative_file_train= 'random_neg/HEK_iM_neg.txt'
-    #positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
-    #negative_file_test= 'random_neg/WDLPS_iM_neg.txt'
-    #test_dict, train_dict = createDictWDLPS()
-    test_dict, train_dict = createDict()
-    test_dict, train_dict = add_negatives_to_dict(test_dict,train_dict,negative_file)
-    #test_dict = add_negatives_to_dict_WDLPS(test_dict, negative_file_test)
-    #train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
+    negative_file_train= 'random_neg/HEK_iM_neg.txt'
+    positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
+    negative_file_test= 'random_neg/WDLPS_iM_neg.txt'
+    test_dict, train_dict = createDictWDLPS()
+    #test_dict, train_dict = createDict()
+    #test_dict, train_dict = add_negatives_to_dict(test_dict,train_dict,negative_file)
+    test_dict = add_negatives_to_dict_WDLPS(test_dict, negative_file_test)
+    train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
     items_train = list(train_dict.items())
     random.shuffle(items_train)
     shuffled_dict_train = dict(items_train)
@@ -414,14 +414,14 @@ def main_random():
 
 def main_genNullSeq():
     negative_file= 'genNellSeq/negHekiM.txt'
-    #positive_file_train= 'pos_txt_files/HEK_iM.txt'
-    #negative_file_train= 'genNellSeq/negHekiM.txt'
-    #positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
-    #negative_file_test= 'genNellSeq/negWDLPSiM.txt'
-    test_dict, train_dict = createDict()
-    #test_dict,train_dict = createDictWDLPS()
-    #test_dict = add_negatives_to_dict_WDLPS(test_dict, negative_file_test)
-    #train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
+    positive_file_train= 'pos_txt_files/HEK_iM.txt'
+    negative_file_train= 'genNellSeq/negHekiM.txt'
+    positive_file_test= 'pos_txt_files/WDLPS_iM.txt'
+    negative_file_test= 'genNellSeq/negWDLPSiM.txt'
+    #test_dict, train_dict = createDict()
+    test_dict,train_dict = createDictWDLPS()
+    test_dict = add_negatives_to_dict_WDLPS(test_dict, negative_file_test)
+    train_dict = add_negatives_to_dict_WDLPS(train_dict, negative_file_train)
     #test_dict,train_dict= add_negatives_to_dict(test_dict,train_dict,negative_file)
     items_train = list(train_dict.items())
     random.shuffle(items_train)
